@@ -10,4 +10,4 @@ include_directories(C:/msys64/ucrt64/include)
 
 add_executable(cs-skin-api src/main.cpp)
 
-target_link_libraries(cs-skin-api ws2_32 wsock32 mswsock)
+target_link_libraries(cs-skin-api ws2_32 wsock32 mswsock curl)
