@@ -8,6 +8,8 @@ include_directories(include)
 include_directories(third_party)
 include_directories(C:/msys64/ucrt64/include)
 
+find_package(CURL REQUIRED)
+
 add_executable(cs-skin-api src/main.cpp)
 
-target_link_libraries(cs-skin-api ws2_32 wsock32 mswsock curl)
+target_link_libraries(cs-skin-api ws2_32 wsock32 mswsock CURL::libcurl)
