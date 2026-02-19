@@ -1,6 +1,18 @@
-#include <iostream>
+#include "crow_all.h"
 
 int main() {
-    std::cout << "CS Skin API Server starting..." << std::endl;
-    return 0;
+    crow::SimpleApp app;
+
+    CROW_ROUTE(app, "/")([](){
+        return "CS Skin API is running!";
+    });
+
+    CROW_ROUTE(app, "/health")([](){
+        crow::json::wvalue response;
+        response["status"] = "ok";
+        response["message"] = "CS Skin API is alive";
+        return response;
+    });
+
+    app.port(8080).multithreaded().run();
 }
