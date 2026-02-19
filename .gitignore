@@ -1,0 +1,6 @@
+build/
+.cmake/
+CMakeFiles/
+*.exe
+*.o
+.vscode/
