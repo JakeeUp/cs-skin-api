@@ -3,6 +3,8 @@
 #include <curl/curl.h>
 #include <string>
 #include <iostream>
+#include <vector>
+#include <algorithm>
 
 using json = nlohmann::json;
 
@@ -130,6 +132,104 @@ int main() {
             response["lowest_price"] = data.value("lowest_price", "N/A");
             response["median_price"] = data.value("median_price", "N/A");
             response["volume"] = data.value("volume", "N/A");
+            return response;
+
+        } catch (const std::exception& e) {
+            crow::json::wvalue error;
+            error["error"] = e.what();
+            return error;
+        }
+    });
+
+    // Budget optimizer - knapsack algorithm
+    // POST /budget/optimize
+    // Body: {"budget": 100.00, "query": "AK-47"}
+    CROW_ROUTE(app, "/budget/optimize").methods(crow::HTTPMethod::Post)([](const crow::request& req){
+        try {
+            auto body = json::parse(req.body);
+            double budget = body.value("budget", 0.0);
+            std::string query = body.value("query", "");
+
+            if (budget <= 0 || query.empty()) {
+                crow::json::wvalue error;
+                error["error"] = "Missing budget or query";
+                return error;
+            }
+
+            // Fetch skins matching query
+            std::string url = "https://steamcommunity.com/market/search/render/?query="
+                + urlEncode(query)
+                + "&appid=730&search_descriptions=0&sort_column=popular&sort_dir=desc&norender=1";
+
+            std::string raw = fetchURL(url);
+            auto data = json::parse(raw);
+
+            struct Skin {
+                std::string name;
+                std::string price_text;
+                int price_cents;
+                int score;
+            };
+
+            std::vector<Skin> skins;
+            int budget_cents = (int)(budget * 100);
+
+            for (auto& item : data["results"]) {
+                int price = item["sell_price"].get<int>();
+                int listings = item["sell_listings"].get<int>();
+                // Filter out skins under $1 to avoid cheap junk
+                if (price <= budget_cents && price >= 100) {
+                    skins.push_back({
+                        item["name"].get<std::string>(),
+                        item["sell_price_text"].get<std::string>(),
+                        price,
+                        listings
+                    });
+                }
+            }
+
+            // DEBUG
+            std::cout << "Total results from Steam: " << data["results"].size() << std::endl;
+            std::cout << "Budget cents: " << budget_cents << std::endl;
+            for (auto& item : data["results"]) {
+                std::cout << "Skin: " << item["name"] << " Price: " << item["sell_price"] << std::endl;
+            }
+            std::cout << "Skins passing filter: " << skins.size() << std::endl;
+
+            // Knapsack - maximize score (popularity) within budget
+            int n = skins.size();
+            std::vector<std::vector<int>> dp(n + 1, std::vector<int>(budget_cents + 1, 0));
+
+            for (int i = 1; i <= n; i++) {
+                for (int w = 0; w <= budget_cents; w++) {
+                    dp[i][w] = dp[i-1][w];
+                    if (skins[i-1].price_cents <= w) {
+                        dp[i][w] = std::max(dp[i][w], dp[i-1][w - skins[i-1].price_cents] + skins[i-1].score);
+                    }
+                }
+            }
+
+            // Backtrack to find selected skins
+            std::vector<crow::json::wvalue> selected;
+            int w = budget_cents;
+            int total_spent = 0;
+            for (int i = n; i > 0; i--) {
+                if (dp[i][w] != dp[i-1][w]) {
+                    crow::json::wvalue skin;
+                    skin["name"] = skins[i-1].name;
+                    skin["price"] = skins[i-1].price_text;
+                    skin["listings"] = skins[i-1].score;
+                    selected.push_back(std::move(skin));
+                    w -= skins[i-1].price_cents;
+                    total_spent += skins[i-1].price_cents;
+                }
+            }
+
+            crow::json::wvalue response;
+            response["budget"] = budget;
+            response["total_spent"] = (double)total_spent / 100.0;
+            response["remaining"] = (double)(budget_cents - total_spent) / 100.0;
+            response["skins"] = std::move(selected);
             return response;
 
         } catch (const std::exception& e) {
