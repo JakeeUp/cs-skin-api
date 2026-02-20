@@ -1,5 +1,5 @@
-# CS Skin API
-
+## Demo
+![CS Skin API Demo](Screenshot.png)
 A REST API built in C++ that provides real-time CS2 skin market data from the Steam Marketplace, including a budget optimization engine powered by a knapsack algorithm.
 
 ## Features
