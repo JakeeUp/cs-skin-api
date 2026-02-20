@@ -48,7 +48,15 @@ std::string fetchURL(const std::string& url) {
     return response;
 }
 
-// Fetch multiple pages and merge into results, deduplicating by hash_name
+struct Skin {
+    std::string name;
+    std::string price_text;
+    std::string icon_url;
+    std::string market_url;
+    int price_cents;
+    int score;
+};
+
 void fetchAndMerge(
     const std::string& query,
     const std::string& sortCol,
@@ -92,6 +100,8 @@ void fetchAndMerge(
                 skin["sale_price_text"] = item["sale_price_text"].get<std::string>();
                 skin["icon_url"] = "https://community.akamai.steamstatic.com/economy/image/"
                     + item["asset_description"]["icon_url"].get<std::string>();
+                skin["market_url"] = "https://steamcommunity.com/market/listings/730/"
+                    + urlEncode(hash);
                 results.push_back(std::move(skin));
             }
         } catch (...) {
@@ -99,15 +109,6 @@ void fetchAndMerge(
         }
     }
 }
-
-// Fetch multiple pages into Skin structs for budget optimizer
-struct Skin {
-    std::string name;
-    std::string price_text;
-    std::string icon_url;
-    int price_cents;
-    int score;
-};
 
 void fetchSkinsForBudget(
     const std::string& query,
@@ -148,6 +149,8 @@ void fetchSkinsForBudget(
                         item["sell_price_text"].get<std::string>(),
                         "https://community.akamai.steamstatic.com/economy/image/"
                             + item["asset_description"]["icon_url"].get<std::string>(),
+                        "https://steamcommunity.com/market/listings/730/"
+                            + urlEncode(hash),
                         price,
                         listings
                     });
@@ -194,9 +197,8 @@ int main() {
         std::vector<crow::json::wvalue> results;
         std::set<std::string> seen;
 
-        // 3 pages popular + 3 pages price desc = up to 60 unique results
-        fetchAndMerge(query, "popular", "desc", 3, min_cents, max_cents, results, seen);
-        fetchAndMerge(query, "price", "desc", 3, min_cents, max_cents, results, seen);
+        fetchAndMerge(query, "popular", "desc", 10, min_cents, max_cents, results, seen);
+        fetchAndMerge(query, "price", "desc", 10, min_cents, max_cents, results, seen);
 
         crow::json::wvalue response;
         response["total_count"] = (int)results.size();
@@ -253,9 +255,8 @@ int main() {
             std::vector<Skin> skins;
             std::set<std::string> seen;
 
-            // 3 pages popular + 3 pages price desc
-            fetchSkinsForBudget(query, "popular", "desc", 3, min_price, budget_cents, skins, seen);
-            fetchSkinsForBudget(query, "price", "desc", 3, min_price, budget_cents, skins, seen);
+            fetchSkinsForBudget(query, "popular", "desc", 10, min_price, budget_cents, skins, seen);
+            fetchSkinsForBudget(query, "price", "desc", 10, min_price, budget_cents, skins, seen);
 
             if (skins.empty()) {
                 crow::json::wvalue error;
@@ -285,6 +286,7 @@ int main() {
                     skin["price"] = skins[i-1].price_text;
                     skin["listings"] = skins[i-1].score;
                     skin["icon_url"] = skins[i-1].icon_url;
+                    skin["market_url"] = skins[i-1].market_url;
                     selected.push_back(std::move(skin));
                     w -= skins[i-1].price_cents;
                     total_spent += skins[i-1].price_cents;
