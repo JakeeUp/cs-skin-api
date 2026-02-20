@@ -4,17 +4,16 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <set>
 #include <algorithm>
 
 using json = nlohmann::json;
 
-// Curl write callback
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output) {
     output->append((char*)contents, size * nmemb);
     return size * nmemb;
 }
 
-// URL encode a string using curl
 std::string urlEncode(const std::string& str) {
     CURL* curl = curl_easy_init();
     std::string encoded;
@@ -29,7 +28,6 @@ std::string urlEncode(const std::string& str) {
     return encoded;
 }
 
-// Fetch a URL and return the response body
 std::string fetchURL(const std::string& url) {
     CURL* curl = curl_easy_init();
     std::string response;
@@ -50,15 +48,128 @@ std::string fetchURL(const std::string& url) {
     return response;
 }
 
-int main() {
-    crow::SimpleApp app;
+// Fetch multiple pages and merge into results, deduplicating by hash_name
+void fetchAndMerge(
+    const std::string& query,
+    const std::string& sortCol,
+    const std::string& sortDir,
+    int pages,
+    int min_cents,
+    int max_cents,
+    std::vector<crow::json::wvalue>& results,
+    std::set<std::string>& seen
+) {
+    for (int page = 0; page < pages; page++) {
+        std::string url = "https://steamcommunity.com/market/search/render/?query="
+            + urlEncode(query)
+            + "&appid=730&search_descriptions=0"
+            + "&sort_column=" + sortCol
+            + "&sort_dir=" + sortDir
+            + "&count=10&start=" + std::to_string(page * 10)
+            + "&norender=1";
 
-    // Root
+        std::string raw = fetchURL(url);
+        if (raw.empty()) continue;
+
+        try {
+            auto data = json::parse(raw);
+            if (!data.contains("results")) continue;
+
+            for (auto& item : data["results"]) {
+                std::string hash = item["hash_name"].get<std::string>();
+                if (seen.count(hash)) continue;
+                seen.insert(hash);
+
+                int price = item["sell_price"].get<int>();
+                if (price < min_cents || price > max_cents) continue;
+
+                crow::json::wvalue skin;
+                skin["name"] = item["name"].get<std::string>();
+                skin["hash_name"] = hash;
+                skin["sell_listings"] = item["sell_listings"].get<int>();
+                skin["sell_price"] = price;
+                skin["sell_price_text"] = item["sell_price_text"].get<std::string>();
+                skin["sale_price_text"] = item["sale_price_text"].get<std::string>();
+                skin["icon_url"] = "https://community.akamai.steamstatic.com/economy/image/"
+                    + item["asset_description"]["icon_url"].get<std::string>();
+                results.push_back(std::move(skin));
+            }
+        } catch (...) {
+            continue;
+        }
+    }
+}
+
+// Fetch multiple pages into Skin structs for budget optimizer
+struct Skin {
+    std::string name;
+    std::string price_text;
+    std::string icon_url;
+    int price_cents;
+    int score;
+};
+
+void fetchSkinsForBudget(
+    const std::string& query,
+    const std::string& sortCol,
+    const std::string& sortDir,
+    int pages,
+    int min_cents,
+    int max_cents,
+    std::vector<Skin>& skins,
+    std::set<std::string>& seen
+) {
+    for (int page = 0; page < pages; page++) {
+        std::string url = "https://steamcommunity.com/market/search/render/?query="
+            + urlEncode(query)
+            + "&appid=730&search_descriptions=0"
+            + "&sort_column=" + sortCol
+            + "&sort_dir=" + sortDir
+            + "&count=10&start=" + std::to_string(page * 10)
+            + "&norender=1";
+
+        std::string raw = fetchURL(url);
+        if (raw.empty()) continue;
+
+        try {
+            auto data = json::parse(raw);
+            if (!data.contains("results")) continue;
+
+            for (auto& item : data["results"]) {
+                std::string hash = item["hash_name"].get<std::string>();
+                if (seen.count(hash)) continue;
+                seen.insert(hash);
+
+                int price = item["sell_price"].get<int>();
+                int listings = item["sell_listings"].get<int>();
+                if (price <= max_cents && price >= min_cents) {
+                    skins.push_back({
+                        item["name"].get<std::string>(),
+                        item["sell_price_text"].get<std::string>(),
+                        "https://community.akamai.steamstatic.com/economy/image/"
+                            + item["asset_description"]["icon_url"].get<std::string>(),
+                        price,
+                        listings
+                    });
+                }
+            }
+        } catch (...) {
+            continue;
+        }
+    }
+}
+
+int main() {
+    crow::App<crow::CORSHandler> app;
+    auto& cors = app.get_middleware<crow::CORSHandler>();
+    cors.global()
+        .headers("Content-Type")
+        .methods("GET"_method, "POST"_method);
+
     CROW_ROUTE(app, "/")([](){
         return "CS Skin API is running!";
     });
 
-    // Health check
     CROW_ROUTE(app, "/health")([](){
         crow::json::wvalue response;
         response["status"] = "ok";
@@ -66,54 +177,36 @@ int main() {
         return response;
     });
 
-    // Search skins by name
-    // GET /search?q=AK-47+Redline
+    // GET /search?q=AK-47&min=10&max=300
     CROW_ROUTE(app, "/search")([](const crow::request& req){
         std::string query = req.url_params.get("q") ? req.url_params.get("q") : "";
-
         if (query.empty()) {
             crow::json::wvalue error;
             error["error"] = "Missing query parameter ?q=";
             return error;
         }
 
-        std::string url = "https://steamcommunity.com/market/search/render/?query="
-            + urlEncode(query)
-            + "&appid=730&search_descriptions=0&sort_column=popular&sort_dir=desc&norender=1";
+        std::string min_str = req.url_params.get("min") ? req.url_params.get("min") : "0";
+        std::string max_str = req.url_params.get("max") ? req.url_params.get("max") : "999999";
+        int min_cents = (int)(std::stod(min_str) * 100);
+        int max_cents = (int)(std::stod(max_str) * 100);
 
-        std::string raw = fetchURL(url);
+        std::vector<crow::json::wvalue> results;
+        std::set<std::string> seen;
 
-        try {
-            auto data = json::parse(raw);
-            crow::json::wvalue response;
-            response["total_count"] = data["total_count"].get<int>();
+        // 3 pages popular + 3 pages price desc = up to 60 unique results
+        fetchAndMerge(query, "popular", "desc", 3, min_cents, max_cents, results, seen);
+        fetchAndMerge(query, "price", "desc", 3, min_cents, max_cents, results, seen);
 
-            std::vector<crow::json::wvalue> results;
-            for (auto& item : data["results"]) {
-                crow::json::wvalue skin;
-                skin["name"] = item["name"].get<std::string>();
-                skin["hash_name"] = item["hash_name"].get<std::string>();
-                skin["sell_listings"] = item["sell_listings"].get<int>();
-                skin["sell_price"] = item["sell_price"].get<int>();
-                skin["sell_price_text"] = item["sell_price_text"].get<std::string>();
-                skin["sale_price_text"] = item["sale_price_text"].get<std::string>();
-                results.push_back(std::move(skin));
-            }
-            response["results"] = std::move(results);
-            return response;
-
-        } catch (const std::exception& e) {
-            crow::json::wvalue error;
-            error["error"] = e.what();
-            return error;
-        }
+        crow::json::wvalue response;
+        response["total_count"] = (int)results.size();
+        response["results"] = std::move(results);
+        return response;
     });
 
-    // Get price for a specific skin
     // GET /price?name=AK-47+Redline+(Field-Tested)
     CROW_ROUTE(app, "/price")([](const crow::request& req){
         std::string name = req.url_params.get("name") ? req.url_params.get("name") : "";
-
         if (name.empty()) {
             crow::json::wvalue error;
             error["error"] = "Missing name parameter ?name=";
@@ -133,7 +226,6 @@ int main() {
             response["median_price"] = data.value("median_price", "N/A");
             response["volume"] = data.value("volume", "N/A");
             return response;
-
         } catch (const std::exception& e) {
             crow::json::wvalue error;
             error["error"] = e.what();
@@ -141,7 +233,6 @@ int main() {
         }
     });
 
-    // Budget optimizer - knapsack algorithm
     // POST /budget/optimize
     // Body: {"budget": 100.00, "query": "AK-47"}
     CROW_ROUTE(app, "/budget/optimize").methods(crow::HTTPMethod::Post)([](const crow::request& req){
@@ -156,47 +247,22 @@ int main() {
                 return error;
             }
 
-            // Fetch skins matching query
-            std::string url = "https://steamcommunity.com/market/search/render/?query="
-                + urlEncode(query)
-                + "&appid=730&search_descriptions=0&sort_column=popular&sort_dir=desc&norender=1";
-
-            std::string raw = fetchURL(url);
-            auto data = json::parse(raw);
-
-            struct Skin {
-                std::string name;
-                std::string price_text;
-                int price_cents;
-                int score;
-            };
+            int budget_cents = (int)(budget * 100);
+            int min_price = budget_cents / 10;
 
             std::vector<Skin> skins;
-            int budget_cents = (int)(budget * 100);
+            std::set<std::string> seen;
 
-            for (auto& item : data["results"]) {
-                int price = item["sell_price"].get<int>();
-                int listings = item["sell_listings"].get<int>();
-                // Filter out skins under $1 to avoid cheap junk
-                if (price <= budget_cents && price >= 100) {
-                    skins.push_back({
-                        item["name"].get<std::string>(),
-                        item["sell_price_text"].get<std::string>(),
-                        price,
-                        listings
-                    });
-                }
+            // 3 pages popular + 3 pages price desc
+            fetchSkinsForBudget(query, "popular", "desc", 3, min_price, budget_cents, skins, seen);
+            fetchSkinsForBudget(query, "price", "desc", 3, min_price, budget_cents, skins, seen);
+
+            if (skins.empty()) {
+                crow::json::wvalue error;
+                error["error"] = "No skins found within budget. Try a more specific search like 'AK-47 Redline'";
+                return error;
             }
 
-            // DEBUG
-            std::cout << "Total results from Steam: " << data["results"].size() << std::endl;
-            std::cout << "Budget cents: " << budget_cents << std::endl;
-            for (auto& item : data["results"]) {
-                std::cout << "Skin: " << item["name"] << " Price: " << item["sell_price"] << std::endl;
-            }
-            std::cout << "Skins passing filter: " << skins.size() << std::endl;
-
-            // Knapsack - maximize score (popularity) within budget
             int n = skins.size();
             std::vector<std::vector<int>> dp(n + 1, std::vector<int>(budget_cents + 1, 0));
 
@@ -209,7 +275,6 @@ int main() {
                 }
             }
 
-            // Backtrack to find selected skins
             std::vector<crow::json::wvalue> selected;
             int w = budget_cents;
             int total_spent = 0;
@@ -219,6 +284,7 @@ int main() {
                     skin["name"] = skins[i-1].name;
                     skin["price"] = skins[i-1].price_text;
                     skin["listings"] = skins[i-1].score;
+                    skin["icon_url"] = skins[i-1].icon_url;
                     selected.push_back(std::move(skin));
                     w -= skins[i-1].price_cents;
                     total_spent += skins[i-1].price_cents;
