@@ -1,7 +1,8 @@
-const API = 'http://localhost:8080';
+const API = 'http://127.0.0.1:8080';
 
-let currentView = 'grid';
-let allResults  = [];
+let currentView   = 'grid';
+let allResults    = [];
+let selectedSide  = 'T';
 
 // ─── Page Navigation ───────────────────────────────────────
 
@@ -25,11 +26,11 @@ function setView(mode) {
 // ─── Helpers ───────────────────────────────────────────────
 
 const WEAR_MAP = {
-    'Factory New':   { key: 'fn', label: 'FN' },
-    'Minimal Wear':  { key: 'mw', label: 'MW' },
-    'Field-Tested':  { key: 'ft', label: 'FT' },
-    'Well-Worn':     { key: 'ww', label: 'WW' },
-    'Battle-Scarred':{ key: 'bs', label: 'BS' },
+    'Factory New':    { key: 'fn', label: 'FN' },
+    'Minimal Wear':   { key: 'mw', label: 'MW' },
+    'Field-Tested':   { key: 'ft', label: 'FT' },
+    'Well-Worn':      { key: 'ww', label: 'WW' },
+    'Battle-Scarred': { key: 'bs', label: 'BS' },
 };
 
 function getWear(name) {
@@ -54,7 +55,6 @@ function wearBadgeHTML(wear) {
 function skinCardHTML(name, priceText, listings, isStatTrak = false, iconUrl = '', marketUrl = '') {
     const wear     = getWear(name);
     const baseName = getBaseName(name);
-
     return `
         <div class="skin-card">
             <a href="${marketUrl || '#'}" target="_blank" class="skin-link">
@@ -88,7 +88,14 @@ function renderResults(results, containerId) {
     }
     div.innerHTML = results.map(skin => {
         const isStatTrak = skin.name.includes('StatTrak');
-        return skinCardHTML(skin.name, skin.sell_price_text || skin.price, skin.sell_listings || skin.listings, isStatTrak, skin.icon_url, skin.market_url);
+        return skinCardHTML(
+            skin.name,
+            skin.sell_price_text || skin.price,
+            skin.sell_listings   || skin.listings,
+            isStatTrak,
+            skin.icon_url,
+            skin.market_url
+        );
     }).join('');
 }
 
@@ -105,7 +112,6 @@ async function searchSkins() {
     const q        = document.getElementById('weaponSelect').value;
     const minPrice = document.getElementById('minPrice').value || 0;
     const maxPrice = document.getElementById('maxPrice').value || 999999;
-
     const resultsDiv = document.getElementById('searchResults');
     const countDiv   = document.getElementById('resultsCount');
 
@@ -128,10 +134,9 @@ async function searchSkins() {
 
         allResults = data.results;
 
-        // Apply wear & stattrak filters client-side
-        const checkedWears  = [...document.querySelectorAll('.wear-chip input:checked')].map(c => c.value);
-        const stattrakOnly  = document.getElementById('stattrakOnly').checked;
-        let   filtered      = allResults;
+        const checkedWears = [...document.querySelectorAll('.wear-chip input:checked')].map(c => c.value);
+        const stattrakOnly = document.getElementById('stattrakOnly').checked;
+        let filtered = allResults;
 
         if (checkedWears.length > 0) {
             filtered = filtered.filter(s => checkedWears.includes(getWear(s.name)));
@@ -161,7 +166,7 @@ async function optimizeBudget() {
         return;
     }
 
-    resultsDiv.innerHTML = '<div class="msg-loading">Running knapsack optimization…</div>';
+    resultsDiv.innerHTML = '<div class="msg-loading">Fetching skins within budget…</div>';
     summaryDiv.innerHTML = '';
 
     try {
@@ -182,8 +187,6 @@ async function optimizeBudget() {
             return;
         }
 
-        const remaining = data.remaining ?? (data.budget - data.total_spent);
-
         summaryDiv.innerHTML = `
             <div class="budget-summary">
                 <div class="summary-card">
@@ -191,16 +194,16 @@ async function optimizeBudget() {
                     <div class="summary-value">$${data.budget.toFixed(2)}</div>
                 </div>
                 <div class="summary-card">
-                    <div class="summary-label">Total Spent</div>
-                    <div class="summary-value">$${data.total_spent.toFixed(2)}</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-label">Remaining</div>
-                    <div class="summary-value positive">$${remaining.toFixed(2)}</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-label">Skins</div>
+                    <div class="summary-label">Skins Found</div>
                     <div class="summary-value">${data.skins.length}</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Cheapest</div>
+                    <div class="summary-value">$${Math.min(...data.skins.map(s => parseFloat(s.price.replace(/[^0-9.]/g, '')))).toFixed(2)}</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Most Expensive</div>
+                    <div class="summary-value positive">$${Math.max(...data.skins.map(s => parseFloat(s.price.replace(/[^0-9.]/g, '')))).toFixed(2)}</div>
                 </div>
             </div>
         `;
@@ -211,3 +214,111 @@ async function optimizeBudget() {
         resultsDiv.innerHTML = '<div class="msg-error">Cannot connect — is the server running?</div>';
     }
 }
+
+// ─── Loadout Builder ───────────────────────────────────────
+
+function setSide(side) {
+    selectedSide = side;
+    document.getElementById('sideT').classList.remove('active', 't-active');
+    document.getElementById('sideCT').classList.remove('active', 'ct-active');
+    if (side === 'T') {
+        document.getElementById('sideT').classList.add('active', 't-active');
+    } else {
+        document.getElementById('sideCT').classList.add('active', 'ct-active');
+    }
+}
+
+function updateLoadoutTotal() {
+    const w = parseFloat(document.getElementById('loadoutWeapons').value) || 0;
+    const k = parseFloat(document.getElementById('loadoutKnife').value)   || 0;
+    const g = parseFloat(document.getElementById('loadoutGloves').value)  || 0;
+    const total = w + k + g;
+    document.getElementById('loadoutTotal').textContent = `Total: $${total.toFixed(2)}`;
+}
+
+function slotSectionHTML(slotKey, slotLabel, slotIcon, budgetLabel, skins) {
+    const iconClass = slotKey;
+    const optionsHTML = skins.map(skin => {
+        const isStatTrak = skin.name.includes('StatTrak');
+        return skinCardHTML(skin.name, skin.price, skin.listings, isStatTrak, skin.icon_url, skin.market_url);
+    }).join('');
+
+    return `
+        <div class="slot-section">
+            <div class="slot-header">
+                <div class="slot-icon ${iconClass}">${slotIcon}</div>
+                <div class="slot-title">${slotLabel}</div>
+                <div class="slot-budget-tag">Budget: ${budgetLabel}</div>
+            </div>
+            <div class="slot-options skin-grid">
+                ${optionsHTML || '<div class="msg-error">No options found in this range.</div>'}
+            </div>
+        </div>
+    `;
+}
+
+async function buildLoadout() {
+    const weapons_budget = parseFloat(document.getElementById('loadoutWeapons').value) || 0;
+    const knife_budget   = parseFloat(document.getElementById('loadoutKnife').value)   || 0;
+    const gloves_budget  = parseFloat(document.getElementById('loadoutGloves').value)  || 0;
+    const resultsDiv     = document.getElementById('loadoutResults');
+
+    if (weapons_budget <= 0) {
+        resultsDiv.innerHTML = '<div class="msg-error">Please enter a weapons budget.</div>';
+        return;
+    }
+
+    resultsDiv.innerHTML = '<div class="msg-loading">Building your loadout…</div>';
+
+    try {
+        const res  = await fetch(`${API}/loadout/build`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                side: selectedSide,
+                weapons_budget,
+                knife_budget,
+                gloves_budget
+            })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+            resultsDiv.innerHTML = `<div class="msg-error">${data.error}</div>`;
+            return;
+        }
+
+        const slots      = data.slots;
+        const perWeapon  = (weapons_budget / 2).toFixed(2);
+        let html = '<div class="loadout-slots">';
+
+        if (slots.primary) {
+            const label = selectedSide === 'T' ? 'Primary — AK-47 / SG 553 / Galil AR' : 'Primary — M4A4 / M4A1-S / AUG';
+            html += slotSectionHTML('primary', label, '🔫', `$${perWeapon}`, slots.primary);
+        }
+
+        if (slots.secondary) {
+            const label = selectedSide === 'T' ? 'Secondary — Glock-18 / Tec-9 / Deagle' : 'Secondary — USP-S / P2000 / Five-SeveN';
+            html += slotSectionHTML('secondary', label, '🔫', `$${perWeapon}`, slots.secondary);
+        }
+
+        if (slots.knife) {
+            html += slotSectionHTML('knife', 'Knife', '🔪', `$${knife_budget.toFixed(2)}`, slots.knife);
+        }
+
+        if (slots.gloves) {
+            html += slotSectionHTML('gloves', 'Gloves', '🧤', `$${gloves_budget.toFixed(2)}`, slots.gloves);
+        }
+
+        html += '</div>';
+        resultsDiv.innerHTML = html;
+
+    } catch (e) {
+        resultsDiv.innerHTML = '<div class="msg-error">Cannot connect — is the server running?</div>';
+    }
+}
+
+// Init — set T-side as default active on load
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('sideT').classList.add('active', 't-active');
+});

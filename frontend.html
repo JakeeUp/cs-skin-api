@@ -15,7 +15,7 @@
         <div class="topbar-inner">
             <div class="topbar-left">
                 <div class="logo">
-                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none">
                         <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
                         <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
                         <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
@@ -25,6 +25,7 @@
                 <nav class="topnav">
                     <a class="topnav-link active" onclick="showPage('market')">Market</a>
                     <a class="topnav-link" onclick="showPage('budget')">Budget</a>
+                    <a class="topnav-link" onclick="showPage('loadout')">Loadout</a>
                 </nav>
             </div>
             <div class="topbar-right">
@@ -78,15 +79,13 @@
         </div>
     </header>
 
-    <!-- Market Page -->
+    <!-- ─── MARKET PAGE ─────────────────────────────────────── -->
     <div id="page-market" class="page active">
         <div class="layout">
-
             <aside class="sidebar">
                 <div class="sidebar-section">
                     <div class="sidebar-title">Filters</div>
                 </div>
-
                 <div class="sidebar-section">
                     <div class="sidebar-label">Price</div>
                     <div class="price-row">
@@ -101,7 +100,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="sidebar-section">
                     <div class="sidebar-label">Wear</div>
                     <div class="wear-group">
@@ -112,7 +110,6 @@
                         <label class="wear-chip bs"><input type="checkbox" value="Battle-Scarred"> <span>BS</span></label>
                     </div>
                 </div>
-
                 <div class="sidebar-section">
                     <label class="toggle-row">
                         <span class="sidebar-label" style="margin-bottom:0;">StatTrak™ Only</span>
@@ -122,13 +119,11 @@
                         </div>
                     </label>
                 </div>
-
                 <div class="sidebar-actions">
                     <button class="btn-apply" onclick="searchSkins()">Apply</button>
                     <button class="btn-reset" onclick="clearFilters()">Reset</button>
                 </div>
             </aside>
-
             <main class="results-panel">
                 <div class="results-header">
                     <span id="resultsCount" class="results-count"></span>
@@ -146,14 +141,13 @@
         </div>
     </div>
 
-    <!-- Budget Page -->
+    <!-- ─── BUDGET PAGE ─────────────────────────────────────── -->
     <div id="page-budget" class="page">
         <div class="budget-wrap">
             <div class="budget-header">
                 <h1>Budget Optimizer</h1>
-                <p>Enter your budget and a weapon — we'll run a knapsack algorithm to find the best combination of skins you can afford.</p>
+                <p>Enter your budget and a weapon — we'll show you every skin you can afford, sorted from most to least expensive.</p>
             </div>
-
             <div class="budget-form">
                 <div class="budget-field">
                     <label>Budget (USD)</label>
@@ -214,9 +208,68 @@
                     </button>
                 </div>
             </div>
-
             <div id="budgetSummary"></div>
             <div id="budgetResults" class="skin-grid"></div>
+        </div>
+    </div>
+
+    <!-- ─── LOADOUT PAGE ────────────────────────────────────── -->
+    <div id="page-loadout" class="page">
+        <div class="budget-wrap">
+            <div class="budget-header">
+                <h1>Loadout Builder</h1>
+                <p>Pick your side, set a budget for weapons, and optionally allocate separate budgets for a knife and gloves. We'll find the best options for each slot.</p>
+            </div>
+
+            <!-- Side Selector -->
+            <div class="side-selector">
+                <button class="side-btn active" id="sideT" onclick="setSide('T')">
+                    <span class="side-label">T-Side</span>
+                    <span class="side-sub">AK-47 · Tec-9 · Glock-18</span>
+                </button>
+                <button class="side-btn" id="sideCT" onclick="setSide('CT')">
+                    <span class="side-label">CT-Side</span>
+                    <span class="side-sub">M4A4 · M4A1-S · USP-S</span>
+                </button>
+            </div>
+
+            <!-- Budget Inputs -->
+            <div class="budget-form loadout-form">
+                <div class="budget-field">
+                    <label>Weapons Budget</label>
+                    <div class="price-field">
+                        <span class="price-prefix">$</span>
+                        <input type="number" id="loadoutWeapons" placeholder="e.g. 100" oninput="updateLoadoutTotal()" />
+                    </div>
+                    <span class="field-hint">Split between primary & secondary</span>
+                </div>
+                <div class="budget-field">
+                    <label>Knife Budget <span class="optional-tag">Optional</span></label>
+                    <div class="price-field">
+                        <span class="price-prefix">$</span>
+                        <input type="number" id="loadoutKnife" placeholder="e.g. 50" oninput="updateLoadoutTotal()" />
+                    </div>
+                    <span class="field-hint">Leave empty to skip</span>
+                </div>
+                <div class="budget-field">
+                    <label>Gloves Budget <span class="optional-tag">Optional</span></label>
+                    <div class="price-field">
+                        <span class="price-prefix">$</span>
+                        <input type="number" id="loadoutGloves" placeholder="e.g. 30" oninput="updateLoadoutTotal()" />
+                    </div>
+                    <span class="field-hint">Leave empty to skip</span>
+                </div>
+                <div class="budget-field" style="align-self:flex-end;">
+                    <div class="loadout-total" id="loadoutTotal">Total: $0.00</div>
+                    <button class="btn-optimize" onclick="buildLoadout()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        Build Loadout
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loadout Results -->
+            <div id="loadoutResults"></div>
         </div>
     </div>
 
