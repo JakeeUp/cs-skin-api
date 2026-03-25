@@ -25,6 +25,12 @@ function setView(mode) {
 
 // ─── Helpers ───────────────────────────────────────────────
 
+function escapeHTML(str) {
+    const el = document.createElement('span');
+    el.textContent = str;
+    return el.innerHTML;
+}
+
 const WEAR_MAP = {
     'Factory New':    { key: 'fn', label: 'FN' },
     'Minimal Wear':   { key: 'mw', label: 'MW' },
@@ -54,25 +60,27 @@ function wearBadgeHTML(wear) {
 
 function skinCardHTML(name, priceText, listings, isStatTrak = false, iconUrl = '', marketUrl = '') {
     const wear     = getWear(name);
-    const baseName = getBaseName(name);
+    const baseName = escapeHTML(getBaseName(name));
+    const safePrice = escapeHTML(priceText);
+    const safeUrl  = marketUrl && marketUrl.startsWith('https://') ? marketUrl : '#';
     return `
         <div class="skin-card">
-            <a href="${marketUrl || '#'}" target="_blank" class="skin-link">
+            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="skin-link">
                 <div class="skin-img-wrap">
-                    ${isStatTrak ? `<div class="st-badge">StatTrak™</div>` : ''}
+                    ${isStatTrak ? `<div class="st-badge">StatTrak\u2122</div>` : ''}
                     ${iconUrl
-                        ? `<img src="${iconUrl}" alt="${baseName}" loading="lazy" />`
-                        : `<div class="skin-img-placeholder">◈</div>`}
+                        ? `<img src="${escapeHTML(iconUrl)}" alt="${baseName}" loading="lazy" />`
+                        : `<div class="skin-img-placeholder">\u25C8</div>`}
                 </div>
                 <div class="skin-body">
                     <div class="skin-wear-row">
                         ${wearBadgeHTML(wear)}
-                        <span class="skin-listings-badge">${listings} listings</span>
+                        <span class="skin-listings-badge">${Number(listings)} listings</span>
                     </div>
                     <div class="skin-name">${baseName}</div>
                     <div class="skin-price-row">
-                        <span class="skin-price">${priceText}</span>
-                        <span class="btn-buy">View →</span>
+                        <span class="skin-price">${safePrice}</span>
+                        <span class="btn-buy">View \u2192</span>
                     </div>
                 </div>
             </a>
@@ -120,7 +128,7 @@ async function searchSkins() {
         return;
     }
 
-    resultsDiv.innerHTML = '<div class="msg-loading">Fetching market data…</div>';
+    resultsDiv.innerHTML = '<div class="msg-loading">Fetching market data\u2026</div>';
     countDiv.textContent = '';
 
     try {
@@ -149,7 +157,7 @@ async function searchSkins() {
         renderResults(filtered, 'searchResults');
 
     } catch (e) {
-        resultsDiv.innerHTML = '<div class="msg-error">Cannot connect — is the server running?</div>';
+        resultsDiv.innerHTML = '<div class="msg-error">Cannot connect \u2014 is the server running?</div>';
     }
 }
 
@@ -166,7 +174,7 @@ async function optimizeBudget() {
         return;
     }
 
-    resultsDiv.innerHTML = '<div class="msg-loading">Fetching skins within budget…</div>';
+    resultsDiv.innerHTML = '<div class="msg-loading">Running optimization\u2026</div>';
     summaryDiv.innerHTML = '';
 
     try {
@@ -178,7 +186,7 @@ async function optimizeBudget() {
         const data = await res.json();
 
         if (data.error) {
-            resultsDiv.innerHTML = `<div class="msg-error">${data.error}</div>`;
+            resultsDiv.innerHTML = `<div class="msg-error">${escapeHTML(data.error)}</div>`;
             return;
         }
 
@@ -194,16 +202,16 @@ async function optimizeBudget() {
                     <div class="summary-value">$${data.budget.toFixed(2)}</div>
                 </div>
                 <div class="summary-card">
-                    <div class="summary-label">Skins Found</div>
-                    <div class="summary-value">${data.skins.length}</div>
+                    <div class="summary-label">Total Spent</div>
+                    <div class="summary-value positive">$${data.total_spent.toFixed(2)}</div>
                 </div>
                 <div class="summary-card">
-                    <div class="summary-label">Cheapest</div>
-                    <div class="summary-value">$${Math.min(...data.skins.map(s => parseFloat(s.price.replace(/[^0-9.]/g, '')))).toFixed(2)}</div>
+                    <div class="summary-label">Remaining</div>
+                    <div class="summary-value">$${data.remaining.toFixed(2)}</div>
                 </div>
                 <div class="summary-card">
-                    <div class="summary-label">Most Expensive</div>
-                    <div class="summary-value positive">$${Math.max(...data.skins.map(s => parseFloat(s.price.replace(/[^0-9.]/g, '')))).toFixed(2)}</div>
+                    <div class="summary-label">Selected</div>
+                    <div class="summary-value">${data.skins_selected} of ${data.skins_found}</div>
                 </div>
             </div>
         `;
@@ -211,7 +219,7 @@ async function optimizeBudget() {
         renderResults(data.skins, 'budgetResults');
 
     } catch (e) {
-        resultsDiv.innerHTML = '<div class="msg-error">Cannot connect — is the server running?</div>';
+        resultsDiv.innerHTML = '<div class="msg-error">Cannot connect \u2014 is the server running?</div>';
     }
 }
 
@@ -247,8 +255,8 @@ function slotSectionHTML(slotKey, slotLabel, slotIcon, budgetLabel, skins) {
         <div class="slot-section">
             <div class="slot-header">
                 <div class="slot-icon ${iconClass}">${slotIcon}</div>
-                <div class="slot-title">${slotLabel}</div>
-                <div class="slot-budget-tag">Budget: ${budgetLabel}</div>
+                <div class="slot-title">${escapeHTML(slotLabel)}</div>
+                <div class="slot-budget-tag">Budget: ${escapeHTML(budgetLabel)}</div>
             </div>
             <div class="slot-options skin-grid">
                 ${optionsHTML || '<div class="msg-error">No options found in this range.</div>'}
@@ -268,7 +276,7 @@ async function buildLoadout() {
         return;
     }
 
-    resultsDiv.innerHTML = '<div class="msg-loading">Building your loadout…</div>';
+    resultsDiv.innerHTML = '<div class="msg-loading">Building your loadout\u2026</div>';
 
     try {
         const res  = await fetch(`${API}/loadout/build`, {
@@ -284,7 +292,7 @@ async function buildLoadout() {
         const data = await res.json();
 
         if (data.error) {
-            resultsDiv.innerHTML = `<div class="msg-error">${data.error}</div>`;
+            resultsDiv.innerHTML = `<div class="msg-error">${escapeHTML(data.error)}</div>`;
             return;
         }
 
@@ -293,28 +301,28 @@ async function buildLoadout() {
         let html = '<div class="loadout-slots">';
 
         if (slots.primary) {
-            const label = selectedSide === 'T' ? 'Primary — AK-47 / SG 553 / Galil AR' : 'Primary — M4A4 / M4A1-S / AUG';
-            html += slotSectionHTML('primary', label, '🔫', `$${perWeapon}`, slots.primary);
+            const label = selectedSide === 'T' ? 'Primary \u2014 AK-47 / SG 553 / Galil AR' : 'Primary \u2014 M4A4 / M4A1-S / AUG';
+            html += slotSectionHTML('primary', label, '\uD83D\uDD2B', `$${perWeapon}`, slots.primary);
         }
 
         if (slots.secondary) {
-            const label = selectedSide === 'T' ? 'Secondary — Glock-18 / Tec-9 / Deagle' : 'Secondary — USP-S / P2000 / Five-SeveN';
-            html += slotSectionHTML('secondary', label, '🔫', `$${perWeapon}`, slots.secondary);
+            const label = selectedSide === 'T' ? 'Secondary \u2014 Glock-18 / Tec-9 / Deagle' : 'Secondary \u2014 USP-S / P2000 / Five-SeveN';
+            html += slotSectionHTML('secondary', label, '\uD83D\uDD2B', `$${perWeapon}`, slots.secondary);
         }
 
         if (slots.knife) {
-            html += slotSectionHTML('knife', 'Knife', '🔪', `$${knife_budget.toFixed(2)}`, slots.knife);
+            html += slotSectionHTML('knife', 'Knife', '\uD83D\uDD2A', `$${knife_budget.toFixed(2)}`, slots.knife);
         }
 
         if (slots.gloves) {
-            html += slotSectionHTML('gloves', 'Gloves', '🧤', `$${gloves_budget.toFixed(2)}`, slots.gloves);
+            html += slotSectionHTML('gloves', 'Gloves', '\uD83E\uDDE4', `$${gloves_budget.toFixed(2)}`, slots.gloves);
         }
 
         html += '</div>';
         resultsDiv.innerHTML = html;
 
     } catch (e) {
-        resultsDiv.innerHTML = '<div class="msg-error">Cannot connect — is the server running?</div>';
+        resultsDiv.innerHTML = '<div class="msg-error">Cannot connect \u2014 is the server running?</div>';
     }
 }
 

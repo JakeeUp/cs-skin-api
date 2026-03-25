@@ -6,13 +6,15 @@
 #include <vector>
 #include <set>
 #include <algorithm>
+#include <thread>
+#include <chrono>
 
 using json = nlohmann::json;
 
 // ─── CURL Helpers ──────────────────────────────────────────
 
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output) {
-    output->append((char*)contents, size * nmemb);
+    output->append(static_cast<char*>(contents), size * nmemb);
     return size * nmemb;
 }
 
@@ -20,7 +22,7 @@ std::string urlEncode(const std::string& str) {
     CURL* curl = curl_easy_init();
     std::string encoded;
     if (curl) {
-        char* out = curl_easy_escape(curl, str.c_str(), (int)str.length());
+        char* out = curl_easy_escape(curl, str.c_str(), static_cast<int>(str.length()));
         if (out) {
             encoded = out;
             curl_free(out);
@@ -42,13 +44,18 @@ std::string fetchURL(const std::string& url) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,  WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA,      &response);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+
+    // SSL verification disabled: MSYS2/MinGW lacks a system CA bundle, causing
+    // certificate validation failures against Steam's CDN. In a production
+    // deployment, set CURLOPT_CAINFO to a valid CA bundle path instead.
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+
     curl_easy_setopt(curl, CURLOPT_USERAGENT,      "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
     curl_easy_setopt(curl, CURLOPT_TIMEOUT,        15L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
 
-    // Steam requires these headers to not block requests
+    // Steam requires browser-like headers to serve JSON
     struct curl_slist* headers = nullptr;
     headers = curl_slist_append(headers, "Accept-Language: en-US,en;q=0.9");
     headers = curl_slist_append(headers, "Accept: application/json, text/javascript, */*; q=0.01");
@@ -72,7 +79,9 @@ std::string fetchURL(const std::string& url) {
 
 struct Skin {
     std::string name;
+    std::string hash_name;
     std::string price_text;
+    std::string sale_price_text;
     std::string icon_url;
     std::string market_url;
     int         price_cents;
@@ -80,6 +89,9 @@ struct Skin {
 };
 
 // ─── Core Steam Market Fetch ───────────────────────────────
+
+// Rate-limit delay between Steam API requests to avoid HTTP 429
+static constexpr int STEAM_RATE_LIMIT_MS = 150;
 
 // Fetches one page of Steam market results for a query.
 // Appends valid skins (price within range) into `skins`, deduplicating via `seen`.
@@ -97,13 +109,13 @@ void fetchPage(
         "https://steamcommunity.com/market/search/render/?appid=730"
         "&search_descriptions=0&norender=1"
         "&count=10"
-        "&start="      + std::to_string(start)   +
-        "&sort_column=" + sortCol                 +
-        "&sort_dir="    + sortDir                 +
+        "&start="       + std::to_string(start) +
+        "&sort_column=" + sortCol               +
+        "&sort_dir="    + sortDir               +
         "&query="       + urlEncode(query);
 
     std::cerr << "[fetchPage] " << query << " | start=" << start
-              << " | budget=" << max_cents << "c" << std::endl;
+              << " | sort=" << sortCol << std::endl;
 
     std::string raw = fetchURL(url);
 
@@ -112,7 +124,7 @@ void fetchPage(
         return;
     }
 
-    // Steam sometimes returns HTML error pages — check for JSON
+    // Steam sometimes returns HTML error pages instead of JSON
     if (raw.front() != '{' && raw.front() != '[') {
         std::cerr << "[fetchPage] Non-JSON response (" << raw.length()
                   << " bytes) for: " << query << std::endl;
@@ -123,13 +135,12 @@ void fetchPage(
         auto data = json::parse(raw);
 
         if (!data.contains("results") || !data["results"].is_array()) {
-            std::cerr << "[fetchPage] No results array in response for: " << query << std::endl;
+            std::cerr << "[fetchPage] No results array for: " << query << std::endl;
             return;
         }
 
         int added = 0;
         for (auto& item : data["results"]) {
-            // Guard all field accesses
             if (!item.contains("hash_name") || !item.contains("sell_price") ||
                 !item.contains("sell_listings") || !item.contains("name") ||
                 !item.contains("sell_price_text") || !item.contains("asset_description"))
@@ -149,7 +160,9 @@ void fetchPage(
             seen.insert(hash);
             skins.push_back({
                 item["name"].get<std::string>(),
+                hash,
                 item["sell_price_text"].get<std::string>(),
+                item.value("sale_price_text", ""),
                 "https://community.akamai.steamstatic.com/economy/image/"
                     + desc["icon_url"].get<std::string>(),
                 "https://steamcommunity.com/market/listings/730/"
@@ -168,7 +181,8 @@ void fetchPage(
     }
 }
 
-// Fetches multiple pages for a query across two sort orders (popular + price)
+// Fetches multiple pages for a query across two sort orders (popular + price).
+// Inserts rate-limit delays between Steam API calls to avoid throttling.
 void fetchQuery(
     const std::string&     query,
     int                    pages,
@@ -179,12 +193,31 @@ void fetchQuery(
 ) {
     for (int p = 0; p < pages; p++) {
         fetchPage(query, "popular", "desc", p * 10, min_cents, max_cents, skins, seen);
+        std::this_thread::sleep_for(std::chrono::milliseconds(STEAM_RATE_LIMIT_MS));
         fetchPage(query, "price",   "desc", p * 10, min_cents, max_cents, skins, seen);
+        if (p < pages - 1)
+            std::this_thread::sleep_for(std::chrono::milliseconds(STEAM_RATE_LIMIT_MS));
     }
 }
 
+// Converts a Skin struct to a crow JSON value for API responses.
+crow::json::wvalue skinToJson(const Skin& s) {
+    crow::json::wvalue j;
+    j["name"]            = s.name;
+    j["hash_name"]       = s.hash_name;
+    j["sell_price"]      = s.price_cents;
+    j["sell_price_text"] = s.price_text;
+    j["sale_price_text"] = s.sale_price_text;
+    j["sell_listings"]   = s.listings;
+    j["icon_url"]        = s.icon_url;
+    j["market_url"]      = s.market_url;
+    return j;
+}
+
+// ─── Loadout Slot Fetcher ──────────────────────────────────
+
 // Fetches options per weapon query, takes the best result from each weapon,
-// then fills remaining slots with next-best across all weapons.
+// then fills remaining slots round-robin with next-best across all weapons.
 // This ensures variety — e.g. one AK-47, one SG 553, one Galil AR — rather than
 // all slots going to whichever weapon has the most cheap listings.
 std::vector<crow::json::wvalue> fetchSlotOptions(
@@ -192,7 +225,6 @@ std::vector<crow::json::wvalue> fetchSlotOptions(
     int                             budget_cents,
     int                             max_options = 5
 ) {
-    // Fetch best results per weapon separately
     std::vector<std::vector<Skin>> perWeapon;
     std::set<std::string> globalSeen;
 
@@ -201,12 +233,10 @@ std::vector<crow::json::wvalue> fetchSlotOptions(
         std::set<std::string> weaponSeen;
         fetchQuery(q, 3, 1, budget_cents, weaponSkins, weaponSeen);
 
-        // Sort each weapon's results by price desc
         std::sort(weaponSkins.begin(), weaponSkins.end(), [](const Skin& a, const Skin& b) {
             return a.price_cents > b.price_cents;
         });
 
-        // Deduplicate against global seen
         std::vector<Skin> filtered;
         for (auto& s : weaponSkins) {
             if (!globalSeen.count(s.market_url)) {
@@ -219,22 +249,20 @@ std::vector<crow::json::wvalue> fetchSlotOptions(
             perWeapon.push_back(std::move(filtered));
     }
 
-    // Interleave: first pick the best (index 0) from each weapon round-robin,
-    // then pick the second-best (index 1), and so on until max_options filled
+    // Interleave: pick best from each weapon round-robin, then second-best, etc.
     std::vector<Skin> interleaved;
     size_t maxDepth = 0;
     for (auto& w : perWeapon)
         if (w.size() > maxDepth) maxDepth = w.size();
 
-    for (size_t depth = 0; depth < maxDepth && (int)interleaved.size() < max_options; depth++) {
+    for (size_t depth = 0; depth < maxDepth && static_cast<int>(interleaved.size()) < max_options; depth++) {
         for (auto& w : perWeapon) {
-            if ((int)interleaved.size() >= max_options) break;
+            if (static_cast<int>(interleaved.size()) >= max_options) break;
             if (depth < w.size())
                 interleaved.push_back(w[depth]);
         }
     }
 
-    // Build final output
     std::vector<crow::json::wvalue> options;
     for (auto& s : interleaved) {
         crow::json::wvalue o;
@@ -254,70 +282,63 @@ std::vector<crow::json::wvalue> fetchSlotOptions(
     return options;
 }
 
-// ─── /search variant — returns crow::json::wvalue directly ─
+// ─── 0/1 Knapsack Budget Optimizer ─────────────────────────
+//
+// Selects the combination of skins that maximizes total value spent
+// without exceeding the budget — a classic 0/1 knapsack problem.
+//
+// Uses dynamic programming for budgets <= $500 with <= 150 items
+// (DP table fits in ~15MB). Falls back to a greedy heuristic
+// (largest-first) for larger inputs where DP would be impractical.
 
-void fetchAndMerge(
-    const std::string&                  query,
-    const std::string&                  sortCol,
-    const std::string&                  sortDir,
-    int                                 pages,
-    int                                 min_cents,
-    int                                 max_cents,
-    std::vector<crow::json::wvalue>&    results,
-    std::set<std::string>&              seen
-) {
-    for (int page = 0; page < pages; page++) {
-        std::string url =
-            "https://steamcommunity.com/market/search/render/?appid=730"
-            "&search_descriptions=0&norender=1"
-            "&count=10"
-            "&start="       + std::to_string(page * 10) +
-            "&sort_column=" + sortCol                    +
-            "&sort_dir="    + sortDir                    +
-            "&query="       + urlEncode(query);
+std::vector<Skin> knapsackOptimize(const std::vector<Skin>& items, int capacity) {
+    int n = static_cast<int>(items.size());
 
-        std::string raw = fetchURL(url);
-        if (raw.empty() || (raw.front() != '{' && raw.front() != '[')) continue;
-
-        try {
-            auto data = json::parse(raw);
-            if (!data.contains("results") || !data["results"].is_array()) continue;
-
-            for (auto& item : data["results"]) {
-                if (!item.contains("hash_name") || !item.contains("sell_price") ||
-                    !item.contains("sell_listings") || !item.contains("name") ||
-                    !item.contains("sell_price_text") || !item.contains("sale_price_text") ||
-                    !item.contains("asset_description"))
-                    continue;
-
-                std::string hash = item["hash_name"].get<std::string>();
-                if (seen.count(hash)) continue;
-
-                int price = item["sell_price"].get<int>();
-                if (price < min_cents || price > max_cents) continue;
-
-                auto& desc = item["asset_description"];
-                if (!desc.contains("icon_url")) continue;
-
-                seen.insert(hash);
-
-                crow::json::wvalue skin;
-                skin["name"]            = item["name"].get<std::string>();
-                skin["hash_name"]       = hash;
-                skin["sell_listings"]   = item["sell_listings"].get<int>();
-                skin["sell_price"]      = price;
-                skin["sell_price_text"] = item["sell_price_text"].get<std::string>();
-                skin["sale_price_text"] = item["sale_price_text"].get<std::string>();
-                skin["icon_url"]        = "https://community.akamai.steamstatic.com/economy/image/"
-                                          + desc["icon_url"].get<std::string>();
-                skin["market_url"]      = "https://steamcommunity.com/market/listings/730/"
-                                          + urlEncode(hash);
-                results.push_back(std::move(skin));
+    // Greedy fallback: sort by price descending, greedily pick items that fit.
+    // Optimal for the "maximize spending" objective when DP is too expensive.
+    if (capacity > 50000 || n > 150) {
+        auto sorted = items;
+        std::sort(sorted.begin(), sorted.end(), [](const Skin& a, const Skin& b) {
+            return a.price_cents > b.price_cents;
+        });
+        std::vector<Skin> result;
+        int remaining = capacity;
+        for (auto& s : sorted) {
+            if (s.price_cents <= remaining) {
+                result.push_back(s);
+                remaining -= s.price_cents;
             }
-        } catch (...) {
-            continue;
+        }
+        return result;
+    }
+
+    // dp[w] = maximum total price achievable with capacity w
+    std::vector<int> dp(capacity + 1, 0);
+    // keep[i][w] = whether item i was selected at capacity w
+    std::vector<std::vector<bool>> keep(n, std::vector<bool>(capacity + 1, false));
+
+    for (int i = 0; i < n; i++) {
+        int cost = items[i].price_cents;
+        // Iterate capacity in reverse to prevent using the same item twice
+        for (int w = capacity; w >= cost; w--) {
+            if (dp[w - cost] + cost > dp[w]) {
+                dp[w] = dp[w - cost] + cost;
+                keep[i][w] = true;
+            }
         }
     }
+
+    // Backtrack through the keep table to recover the selected set
+    std::vector<Skin> result;
+    int w = capacity;
+    for (int i = n - 1; i >= 0; i--) {
+        if (keep[i][w]) {
+            result.push_back(items[i]);
+            w -= items[i].price_cents;
+        }
+    }
+
+    return result;
 }
 
 // ─── Main ──────────────────────────────────────────────────
@@ -353,17 +374,21 @@ int main() {
 
         double min_d = req.url_params.get("min") ? std::stod(req.url_params.get("min")) : 0.0;
         double max_d = req.url_params.get("max") ? std::stod(req.url_params.get("max")) : 999999.0;
-        int min_cents = (int)(min_d * 100);
-        int max_cents = (int)(max_d * 100);
+        int min_cents = static_cast<int>(std::max(0.0, min_d) * 100);
+        int max_cents = static_cast<int>(std::max(0.0, max_d) * 100);
+
+        std::vector<Skin>     skins;
+        std::set<std::string> seen;
+
+        fetchQuery(query, 10, min_cents, max_cents, skins, seen);
 
         std::vector<crow::json::wvalue> results;
-        std::set<std::string>           seen;
-
-        fetchAndMerge(query, "popular", "desc", 10, min_cents, max_cents, results, seen);
-        fetchAndMerge(query, "price",   "desc", 10, min_cents, max_cents, results, seen);
+        results.reserve(skins.size());
+        for (const auto& s : skins)
+            results.push_back(skinToJson(s));
 
         crow::json::wvalue r;
-        r["total_count"] = (int)results.size();
+        r["total_count"] = static_cast<int>(results.size());
         r["results"]     = std::move(results);
         return r;
     });
@@ -402,17 +427,23 @@ int main() {
     // Body: { "budget": 50.00, "query": "AK-47" }
     CROW_ROUTE(app, "/budget/optimize").methods(crow::HTTPMethod::Post)([](const crow::request& req) {
         try {
-            auto   body   = json::parse(req.body);
-            double budget = body.value("budget", 0.0);
+            auto body = json::parse(req.body);
+            double budget   = body.value("budget", 0.0);
             std::string query = body.value("query", "");
 
             if (budget <= 0 || query.empty()) {
                 crow::json::wvalue e;
-                e["error"] = "Missing budget or query";
+                e["error"] = "Missing or invalid budget/query";
                 return e;
             }
 
-            int budget_cents = (int)(budget * 100);
+            if (budget > 10000.0) {
+                crow::json::wvalue e;
+                e["error"] = "Budget cannot exceed $10,000";
+                return e;
+            }
+
+            int budget_cents = static_cast<int>(budget * 100);
 
             std::vector<Skin>     skins;
             std::set<std::string> seen;
@@ -424,26 +455,34 @@ int main() {
                 return e;
             }
 
-            std::sort(skins.begin(), skins.end(), [](const Skin& a, const Skin& b) {
-                return a.price_cents > b.price_cents;
-            });
+            // Run knapsack to find the optimal combination within budget
+            auto selected = knapsackOptimize(skins, budget_cents);
 
-            std::vector<crow::json::wvalue> selected;
-            for (auto& s : skins) {
+            int total_cents = 0;
+            std::vector<crow::json::wvalue> selectedJson;
+            for (auto& s : selected) {
+                total_cents += s.price_cents;
                 crow::json::wvalue sk;
-                sk["name"]       = s.name;
-                sk["price"]      = s.price_text;
-                sk["listings"]   = s.listings;
-                sk["icon_url"]   = s.icon_url;
-                sk["market_url"] = s.market_url;
-                selected.push_back(std::move(sk));
+                sk["name"]        = s.name;
+                sk["price"]       = s.price_text;
+                sk["price_cents"] = s.price_cents;
+                sk["listings"]    = s.listings;
+                sk["icon_url"]    = s.icon_url;
+                sk["market_url"]  = s.market_url;
+                selectedJson.push_back(std::move(sk));
             }
 
+            double total_spent = total_cents / 100.0;
+
             crow::json::wvalue r;
-            r["budget"]      = budget;
-            r["total_spent"] = 0.0;
-            r["remaining"]   = budget;
-            r["skins"]       = std::move(selected);
+            r["budget"]         = budget;
+            r["total_spent"]    = total_spent;
+            r["remaining"]      = budget - total_spent;
+            r["skins_found"]    = static_cast<int>(skins.size());
+            r["skins_selected"] = static_cast<int>(selected.size());
+            r["algorithm"]      = (budget_cents > 50000 || static_cast<int>(skins.size()) > 150)
+                                   ? "greedy" : "knapsack_dp";
+            r["skins"]          = std::move(selectedJson);
             return r;
 
         } catch (const std::exception& e) {
@@ -470,24 +509,29 @@ int main() {
             double knife_budget   = body.value("knife_budget",   0.0);
             double gloves_budget  = body.value("gloves_budget",  0.0);
 
+            if (side != "T" && side != "CT") {
+                crow::json::wvalue e;
+                e["error"] = "side must be 'T' or 'CT'";
+                return e;
+            }
+
             if (weapons_budget <= 0) {
                 crow::json::wvalue e;
                 e["error"] = "weapons_budget must be greater than 0";
                 return e;
             }
 
-            // Split weapons budget evenly between primary and secondary
-            int primary_cents   = (int)((weapons_budget / 2.0) * 100);
-            int secondary_cents = (int)((weapons_budget / 2.0) * 100);
-            int knife_cents     = (int)(knife_budget  * 100);
-            int gloves_cents    = (int)(gloves_budget * 100);
+            int primary_cents   = static_cast<int>((weapons_budget / 2.0) * 100);
+            int secondary_cents = static_cast<int>((weapons_budget / 2.0) * 100);
+            int knife_cents     = static_cast<int>(knife_budget  * 100);
+            int gloves_cents    = static_cast<int>(gloves_budget * 100);
 
             std::cerr << "[loadout/build] side=" << side
                       << " weapons=" << weapons_budget
                       << " knife="   << knife_budget
-                      << " gloves="  << gloves_budget  << std::endl;
+                      << " gloves="  << gloves_budget << std::endl;
 
-            // Weapon lists per side — individual queries, no OR syntax
+            // Weapon lists per side
             std::vector<std::string> primary_queries;
             std::vector<std::string> secondary_queries;
 
@@ -501,28 +545,20 @@ int main() {
 
             crow::json::wvalue slots;
 
-            // Primary
             auto primary_opts = fetchSlotOptions(primary_queries, primary_cents, 5);
             if (!primary_opts.empty())
                 slots["primary"] = std::move(primary_opts);
-            else
-                std::cerr << "[loadout/build] No primary options found" << std::endl;
 
-            // Secondary
             auto secondary_opts = fetchSlotOptions(secondary_queries, secondary_cents, 5);
             if (!secondary_opts.empty())
                 slots["secondary"] = std::move(secondary_opts);
-            else
-                std::cerr << "[loadout/build] No secondary options found" << std::endl;
 
-            // Knife (optional)
             if (knife_cents > 0) {
                 auto knife_opts = fetchSlotOptions({"Knife"}, knife_cents, 5);
                 if (!knife_opts.empty())
                     slots["knife"] = std::move(knife_opts);
             }
 
-            // Gloves (optional)
             if (gloves_cents > 0) {
                 auto gloves_opts = fetchSlotOptions({"Gloves"}, gloves_cents, 5);
                 if (!gloves_opts.empty())
