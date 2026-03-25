@@ -3,6 +3,75 @@ const API = 'http://127.0.0.1:8080';
 let currentView   = 'grid';
 let allResults    = [];
 let selectedSide  = 'T';
+let demoMode      = false;
+
+// ─── Demo Mode ────────────────────────────────────────────
+// When the backend isn't reachable (e.g. GitHub Pages), the UI
+// populates with sample data so visitors can explore the interface.
+
+const STEAM_IMG = 'https://community.akamai.steamstatic.com/economy/image/';
+const STEAM_MKT = 'https://steamcommunity.com/market/listings/730/';
+
+const DEMO_SKINS = {
+    'AK-47': [
+        { name: 'AK-47 | Redline (Field-Tested)',         sell_price_text: '$48.23',  sell_listings: 803,  icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUubOdMATuDKx5KQhvatYXIzKamkL-LYzn5cdVe3r-XodT03VXm80NqZmoyfIbBJBs4NFuC_VK7ye28hMK-tJnIyHZluSh05HfD30vgHGX1a3Y', market_url: STEAM_MKT + 'AK-47%20%7C%20Redline%20%28Field-Tested%29' },
+        { name: 'AK-47 | Asiimov (Field-Tested)',         sell_price_text: '$38.91',  sell_listings: 412,  icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'AK-47%20%7C%20Asiimov%20%28Field-Tested%29' },
+        { name: 'AK-47 | Neon Rider (Factory New)',       sell_price_text: '$72.50',  sell_listings: 95,   icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNNvoj-x9LeZKL1a7rQlTkAOsAhj7uX8I7w2VHg-EBtYDrwdYLXfRv8MtSX', market_url: STEAM_MKT + 'AK-47%20%7C%20Neon%20Rider%20%28Factory%20New%29' },
+        { name: 'StatTrak\u2122 AK-47 | Redline (Field-Tested)', sell_price_text: '$95.00',  sell_listings: 234, icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUubOdMATuDKx5KQhvatYXIzKamkL-LYzn5cdVe3r-XodT03VXm80NqZmoyfIbBJBs4NFuC_VK7ye28hMK-tJnIyHZluSh05HfD30vgHGX1a3Y', market_url: STEAM_MKT + 'StatTrak%E2%84%A2%20AK-47%20%7C%20Redline%20%28Field-Tested%29' },
+        { name: 'AK-47 | Ice Coaled (Minimal Wear)',      sell_price_text: '$15.44',  sell_listings: 652,  icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'AK-47%20%7C%20Ice%20Coaled%20%28Minimal%20Wear%29' },
+        { name: 'AK-47 | Slate (Factory New)',            sell_price_text: '$8.72',   sell_listings: 1204, icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'AK-47%20%7C%20Slate%20%28Factory%20New%29' },
+        { name: 'AK-47 | Bloodsport (Well-Worn)',         sell_price_text: '$22.15',  sell_listings: 188,  icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'AK-47%20%7C%20Bloodsport%20%28Well-Worn%29' },
+        { name: 'AK-47 | Phantom Disruptor (Battle-Scarred)', sell_price_text: '$4.18', sell_listings: 932, icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'AK-47%20%7C%20Phantom%20Disruptor%20%28Battle-Scarred%29' },
+    ],
+    'AWP': [
+        { name: 'AWP | Asiimov (Field-Tested)',            sell_price_text: '$72.45',  sell_listings: 520,  icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'AWP%20%7C%20Asiimov%20%28Field-Tested%29' },
+        { name: 'AWP | Hyper Beast (Minimal Wear)',        sell_price_text: '$34.20',  sell_listings: 315,  icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'AWP%20%7C%20Hyper%20Beast%20%28Minimal%20Wear%29' },
+        { name: 'AWP | Chromatic Aberration (Factory New)', sell_price_text: '$18.90', sell_listings: 445,  icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'AWP%20%7C%20Chromatic%20Aberration%20%28Factory%20New%29' },
+    ],
+    'M4A4': [
+        { name: 'M4A4 | Howl (Field-Tested)',              sell_price_text: '$1,850.00', sell_listings: 12, icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'M4A4%20%7C%20Howl%20%28Field-Tested%29' },
+        { name: 'M4A4 | Neo-Noir (Factory New)',           sell_price_text: '$24.50',    sell_listings: 287, icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'M4A4%20%7C%20Neo-Noir%20%28Factory%20New%29' },
+        { name: 'M4A4 | The Emperor (Minimal Wear)',      sell_price_text: '$45.80',    sell_listings: 134, icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'M4A4%20%7C%20The%20Emperor%20%28Minimal%20Wear%29' },
+    ],
+    'Desert Eagle': [
+        { name: 'Desert Eagle | Blaze (Factory New)',      sell_price_text: '$425.00',  sell_listings: 68,  icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'Desert%20Eagle%20%7C%20Blaze%20%28Factory%20New%29' },
+        { name: 'Desert Eagle | Printstream (Factory New)', sell_price_text: '$52.30', sell_listings: 189, icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'Desert%20Eagle%20%7C%20Printstream%20%28Factory%20New%29' },
+    ],
+    'Glock-18': [
+        { name: 'Glock-18 | Fade (Factory New)',           sell_price_text: '$1,250.00', sell_listings: 22, icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'Glock-18%20%7C%20Fade%20%28Factory%20New%29' },
+        { name: 'Glock-18 | Water Elemental (Field-Tested)', sell_price_text: '$6.45', sell_listings: 1580, icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'Glock-18%20%7C%20Water%20Elemental%20%28Field-Tested%29' },
+    ],
+    'USP-S': [
+        { name: 'USP-S | Kill Confirmed (Minimal Wear)',   sell_price_text: '$68.90',  sell_listings: 245, icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'USP-S%20%7C%20Kill%20Confirmed%20%28Minimal%20Wear%29' },
+        { name: 'USP-S | Neo-Noir (Factory New)',          sell_price_text: '$12.30',  sell_listings: 890, icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + 'USP-S%20%7C%20Neo-Noir%20%28Factory%20New%29' },
+    ],
+    'Karambit': [
+        { name: '\u2605 Karambit | Doppler (Factory New)',  sell_price_text: '$850.00', sell_listings: 45,  icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + '%E2%98%85%20Karambit%20%7C%20Doppler%20%28Factory%20New%29' },
+        { name: '\u2605 Karambit | Fade (Factory New)',     sell_price_text: '$1,400.00', sell_listings: 18, icon_url: STEAM_IMG + '-9a81dlWLwJ2UXp-WlFABnZADMIel-J_skHicBIfZYTmI-1VLM9CgfIBe71lFdXZBrWMnvBMi-RpQhKc3YnBRiGs0c6AJGJS0p1YRFUu7vyDITu_kxNEvoD-x9Le2qH2ZbrTwmsBu5Up2LiUo92h0Qbm_0VoYD36LIeVdlU-MFnT_le3wu3uhcjWtc-Ky3Ew6Kclm7amA', market_url: STEAM_MKT + '%E2%98%85%20Karambit%20%7C%20Fade%20%28Factory%20New%29' },
+    ],
+};
+
+// Fallback skins when a weapon isn't in the demo set
+const DEMO_DEFAULT = DEMO_SKINS['AK-47'];
+
+function getDemoSkins(weapon) {
+    return DEMO_SKINS[weapon] || DEMO_DEFAULT;
+}
+
+async function checkServerAvailable() {
+    try {
+        const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(2000) });
+        return res.ok;
+    } catch { return false; }
+}
+
+function showDemoBanner() {
+    if (document.getElementById('demoBanner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'demoBanner';
+    banner.innerHTML = 'DEMO MODE — Viewing sample data. Run the C++ backend locally for live Steam Market results.';
+    document.body.prepend(banner);
+}
 
 // ─── Page Navigation ───────────────────────────────────────
 
@@ -157,7 +226,24 @@ async function searchSkins() {
         renderResults(filtered, 'searchResults');
 
     } catch (e) {
-        resultsDiv.innerHTML = '<div class="msg-error">Cannot connect \u2014 is the server running?</div>';
+        if (!demoMode) {
+            demoMode = true;
+            showDemoBanner();
+        }
+        // Fall back to demo data
+        const weapon = q || 'AK-47';
+        allResults = getDemoSkins(weapon);
+
+        const checkedWears = [...document.querySelectorAll('.wear-chip input:checked')].map(c => c.value);
+        const stattrakOnly = document.getElementById('stattrakOnly').checked;
+        let filtered = allResults;
+        if (checkedWears.length > 0)
+            filtered = filtered.filter(s => checkedWears.includes(getWear(s.name)));
+        if (stattrakOnly)
+            filtered = filtered.filter(s => s.name.includes('StatTrak'));
+
+        countDiv.textContent = `${filtered.length} listing${filtered.length !== 1 ? 's' : ''}`;
+        renderResults(filtered, 'searchResults');
     }
 }
 
@@ -219,7 +305,34 @@ async function optimizeBudget() {
         renderResults(data.skins, 'budgetResults');
 
     } catch (e) {
-        resultsDiv.innerHTML = '<div class="msg-error">Cannot connect \u2014 is the server running?</div>';
+        if (!demoMode) {
+            demoMode = true;
+            showDemoBanner();
+        }
+        // Demo budget optimizer — simulate knapsack on mock data
+        const weapon = query || 'AK-47';
+        const mockSkins = getDemoSkins(weapon);
+        const parseCents = s => Math.round(parseFloat(s.sell_price_text.replace(/[$,]/g, '')) * 100);
+
+        // Greedy knapsack on demo data
+        const sorted = [...mockSkins].sort((a, b) => parseCents(b) - parseCents(a));
+        const budgetCents = Math.round(budget * 100);
+        let remaining = budgetCents;
+        const selected = [];
+        for (const s of sorted) {
+            const c = parseCents(s);
+            if (c <= remaining) { selected.push(s); remaining -= c; }
+        }
+        const totalSpent = (budgetCents - remaining) / 100;
+
+        summaryDiv.innerHTML = `
+            <div class="budget-summary">
+                <div class="summary-card"><div class="summary-label">Budget</div><div class="summary-value">$${budget.toFixed(2)}</div></div>
+                <div class="summary-card"><div class="summary-label">Total Spent</div><div class="summary-value positive">$${totalSpent.toFixed(2)}</div></div>
+                <div class="summary-card"><div class="summary-label">Remaining</div><div class="summary-value">$${(budget - totalSpent).toFixed(2)}</div></div>
+                <div class="summary-card"><div class="summary-label">Selected</div><div class="summary-value">${selected.length} of ${mockSkins.length}</div></div>
+            </div>`;
+        renderResults(selected, 'budgetResults');
     }
 }
 
@@ -322,11 +435,45 @@ async function buildLoadout() {
         resultsDiv.innerHTML = html;
 
     } catch (e) {
-        resultsDiv.innerHTML = '<div class="msg-error">Cannot connect \u2014 is the server running?</div>';
+        if (!demoMode) {
+            demoMode = true;
+            showDemoBanner();
+        }
+        // Demo loadout builder
+        const perWeapon = weapons_budget / 2;
+        let html = '<div class="loadout-slots">';
+
+        if (selectedSide === 'T') {
+            html += slotSectionHTML('primary',   'Primary \u2014 AK-47 / SG 553 / Galil AR',    '\uD83D\uDD2B', `$${perWeapon.toFixed(2)}`, getDemoSkins('AK-47').slice(0, 3));
+            html += slotSectionHTML('secondary', 'Secondary \u2014 Glock-18 / Tec-9 / Deagle',  '\uD83D\uDD2B', `$${perWeapon.toFixed(2)}`, getDemoSkins('Glock-18'));
+        } else {
+            html += slotSectionHTML('primary',   'Primary \u2014 M4A4 / M4A1-S / AUG',          '\uD83D\uDD2B', `$${perWeapon.toFixed(2)}`, getDemoSkins('M4A4'));
+            html += slotSectionHTML('secondary', 'Secondary \u2014 USP-S / P2000 / Five-SeveN', '\uD83D\uDD2B', `$${perWeapon.toFixed(2)}`, getDemoSkins('USP-S'));
+        }
+
+        if (knife_budget > 0)
+            html += slotSectionHTML('knife', 'Knife', '\uD83D\uDD2A', `$${knife_budget.toFixed(2)}`, getDemoSkins('Karambit'));
+        if (gloves_budget > 0)
+            html += slotSectionHTML('gloves', 'Gloves', '\uD83E\uDDE4', `$${gloves_budget.toFixed(2)}`, []);
+
+        html += '</div>';
+        resultsDiv.innerHTML = html;
     }
 }
 
-// Init — set T-side as default active on load
-document.addEventListener('DOMContentLoaded', () => {
+// Init
+document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('sideT').classList.add('active', 't-active');
+
+    // Check if backend is available; if not, enter demo mode and show default skins
+    const serverUp = await checkServerAvailable();
+    if (!serverUp) {
+        demoMode = true;
+        showDemoBanner();
+        // Auto-populate market page with AK-47 demo skins
+        document.getElementById('weaponSelect').value = 'AK-47';
+        allResults = getDemoSkins('AK-47');
+        document.getElementById('resultsCount').textContent = `${allResults.length} listings`;
+        renderResults(allResults, 'searchResults');
+    }
 });
