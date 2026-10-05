@@ -37,3 +37,16 @@ Guidance from [pbakaus/impeccable](https://github.com/pbakaus/impeccable)
 | One authored motion moment | The Home trending ticker is the only continuous animation; it pauses on hover, focus, and offscreen |
 | Reduced motion means less motion, not none | Movement is removed; color and opacity feedback remain |
 | No eyebrow labels above headings | The Home hero heading stands on its own |
+
+## Chaos world (SkinAPI Corp)
+
+The look was deliberately replaced with a brutalist, "unauthorized" world: black/white plus one yellow (`#FFFF00`), Anton display type against Space Mono, thick borders, hard offset shadows, title-barred `.win` boxes, default link underlines, and `.hl`/`mark` highlighter blocks. This supersedes the earlier amber/Chakra Petch decisions above.
+
+| Decision | Reason |
+|---|---|
+| Satire lives on Home and decorative layers only | Home carries the headline, tracker, countdown, About Us, tape, and (via `chaos.js`) the checkout trap and fake popups |
+| Market, Budget, Loadout stay honest | Brutalist styling, but clear labels, 4.5:1+ text contrast, visible focus, no popups, no traps; prices, SkinsTrack data, liquidity, discount badges, detail modal and Steam links unchanged |
+| Rarity and wear colors stay as data | They are the only extra colors, used on card borders and badges |
+| Tool hover is color/shadow only | Jitter and skew belong to Home and chrome, and are disabled under `prefers-reduced-motion` |
+| Fictional company only | No real brand, OS, or store dialogs are imitated; the footer says the satire is fictional |
+| Hooks for `chaos.js` | `#chaosCountdown`, `#chaosCounter`, `#checkoutTrapBtn`, `#chaosLayer`, `#siteLogo`; shared classes `.win`, `.win-bar`, `.win-title`, `.win-close`, `.win-body`, `.hl`, `.btn-guilt` |
