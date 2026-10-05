@@ -557,7 +557,14 @@ function init() {
     document.querySelectorAll('.topnav-link').forEach(l => l.addEventListener('click', () => showPage(l.dataset.page)));
     document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => showPage(b.dataset.goto)));
     pauseTickerOffscreen();
-    $('searchForm').addEventListener('submit', e => { e.preventDefault(); searchSkins(); });
+    // The search bar lives in the top bar on every page, but its results are on
+    // Market, so jump there first and let the loading cards show immediately.
+    $('searchForm').addEventListener('submit', e => {
+        e.preventDefault();
+        showPage('market');
+        scrollTo(0, 0);
+        searchSkins();
+    });
     $('sortSelect').addEventListener('change', () => { if (state.skins.length) showFiltered(state.skins); });
     // On narrow screens the filters start collapsed above the results.
     if (matchMedia('(max-width: 900px)').matches) $('filters').open = false;
