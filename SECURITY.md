@@ -95,11 +95,9 @@ The API is public. Anyone can call `/search`, `/budget/optimize`, `/loadout/buil
 
 If you discover a security vulnerability, **do not open a public issue**. Instead:
 
-1. Email the maintainer(s) with details of the issue
+1. Report it privately through the repository's **Security → Report a vulnerability** tab on GitHub
 2. Include steps to reproduce and potential impact
 3. Allow 30 days for a fix and coordinated disclosure
-
-We take security seriously and will respond promptly.
 
 ## Compliance & Disclaimers
 
