@@ -14,8 +14,9 @@ void setHttpCaBundle(const std::string& path);
 std::string urlEncode(const std::string& str);
 
 // Performs an HTTPS GET. Pass secrets as headers, never in the URL, since
-// URLs are logged on failure.
-HttpResponse httpGet(const std::string& url, const std::vector<std::string>& headers = {});
+// URLs are logged on failure. `timeoutSeconds` bounds the whole transfer.
+HttpResponse httpGet(const std::string& url, const std::vector<std::string>& headers = {},
+                     long timeoutSeconds = 30);
 
 // Convenience wrapper: body on HTTP 2xx, "" otherwise.
 std::string fetchURL(const std::string& url);

@@ -27,7 +27,8 @@ std::string urlEncode(const std::string& str) {
     return encoded;
 }
 
-HttpResponse httpGet(const std::string& url, const std::vector<std::string>& extraHeaders) {
+HttpResponse httpGet(const std::string& url, const std::vector<std::string>& extraHeaders,
+                     long timeoutSeconds) {
     HttpResponse result;
     CURL* curl = curl_easy_init();
     if (!curl) {
@@ -49,7 +50,7 @@ HttpResponse httpGet(const std::string& url, const std::vector<std::string>& ext
         curl_easy_setopt(curl, CURLOPT_CAINFO, g_caBundle.c_str());
 
     curl_easy_setopt(curl, CURLOPT_USERAGENT,      "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT,        30L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT,        timeoutSeconds);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
 
     // Steam requires browser-like headers to serve JSON
