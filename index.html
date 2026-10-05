@@ -24,7 +24,8 @@
                 <span class="logo-text">SkinAPI</span>
             </div>
             <nav class="topnav" aria-label="Primary">
-                <button type="button" class="topnav-link active" data-page="market" aria-current="page">Market</button>
+                <button type="button" class="topnav-link active" data-page="home" aria-current="page">Home</button>
+                <button type="button" class="topnav-link" data-page="market">Market</button>
                 <button type="button" class="topnav-link" data-page="budget">Budget</button>
                 <button type="button" class="topnav-link" data-page="loadout">Loadout</button>
             </nav>
@@ -41,7 +42,25 @@
 
     <main id="main">
         <!-- MARKET -->
-        <section id="page-market" class="page active" aria-label="Market">
+        <section id="page-home" class="page active" aria-labelledby="homeTitle">
+            <div class="home-hero">
+                <h1 id="homeTitle">What CS2 is trading right now</h1>
+                <p>The most liquid skins on the market, ranked from live SkinsTrack prices and refreshed daily.</p>
+                <button type="button" class="btn-optimize" data-goto="market">Browse the market</button>
+            </div>
+
+            <div class="ticker" id="trendTicker" role="region" aria-label="Trending skins">
+                <ul class="ticker-track" id="trendTrack"></ul>
+            </div>
+
+            <div class="home-section">
+                <h2>Premium picks</h2>
+                <p>Knives, gloves and top-tier skins over $100 that still sell fast.</p>
+                <div id="premiumGrid" class="skin-grid" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <section id="page-market" class="page" aria-label="Market">
             <div class="layout">
                 <details class="sidebar" id="filters" open>
                     <summary class="sidebar-title">Filters</summary>

@@ -1,5 +1,5 @@
 import * as api from './api.js';
-import { getDemoSkins } from './demo-data.js';
+import { DEMO_SKINS, getDemoSkins } from './demo-data.js';
 import {
     WEARS, WEAPON_GROUPS, getWear, getBaseName, isStatTrak, formatMoney,
     normalizeSkin, filterSkins, sortSkins, rarityColor,
@@ -70,7 +70,12 @@ async function tryApi(call, onError) {
 
 function showPage(id) {
     document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + id));
-    document.querySelectorAll('.topnav-link').forEach(l => l.classList.toggle('active', l.dataset.page === id));
+    document.querySelectorAll('.topnav-link').forEach(l => {
+        const current = l.dataset.page === id;
+        l.classList.toggle('active', current);
+        if (current) l.setAttribute('aria-current', 'page');
+        else l.removeAttribute('aria-current');
+    });
 }
 
 function setView(mode) {
@@ -219,6 +224,89 @@ async function showSkinstrackStatus() {
 function renderSkins(rawSkins, container) {
     if (!rawSkins || rawSkins.length === 0) return setMessage(container, 'No skins found.');
     container.replaceChildren(...rawSkins.map(s => skinCard(normalizeSkin(s))));
+}
+
+// ─── Home: trending ticker + premium picks ─────────────────
+
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+// "★ Karambit | Fade" -> weapon line above the finish name.
+function trendName(base) {
+    const [weapon, finish] = base.split(' | ');
+    return h('span', { class: 'trend-name' },
+        finish ? h('span', { class: 'trend-weapon' }, weapon) : null,
+        finish ?? weapon);
+}
+
+function trendTile(skin, clone) {
+    const color = rarityColor(skin.rarity);
+    const st = skin.skinstrack;
+    const tile = h('button', {
+        type: 'button', class: 'trend-tile', style: color && `--rarity:${color}`,
+        tabindex: clone ? '-1' : false,
+        'aria-label': clone ? false : `${skin.name}, ${formatMoney(skin.cents)}. Open details`,
+    },
+        skin.iconUrl ? h('img', { src: skin.iconUrl, alt: '', loading: 'lazy', width: '128', height: '96' })
+                     : h('span', { class: 'trend-img-empty' }),
+        trendName(getBaseName(skin.name)),
+        h('span', { class: 'trend-meta' },
+            wearBadge(getWear(skin.name)),
+            h('span', { class: 'trend-price' }, formatMoney(skin.cents))),
+        st && h('span', { class: 'trend-liq' }, `Liquidity ${clampPct(st.liquidity)}`));
+    if (!clone) tile.addEventListener('click', () => openDetail(skin, tile));
+    return tile;
+}
+
+// The track holds the list twice so translating it by -50% loops seamlessly.
+// The copy is hidden from assistive tech and the tab order.
+function renderTicker(rawSkins) {
+    const ticker = $('trendTicker');
+    const track = $('trendTrack');
+    const skins = rawSkins.map(normalizeSkin);
+    if (skins.length === 0) { ticker.hidden = true; return; }
+
+    const items = skins.map(s => h('li', {}, trendTile(s, false)));
+    if (!reducedMotion.matches) {
+        items.push(...skins.map(s => h('li', { 'aria-hidden': 'true' }, trendTile(s, true))));
+        track.style.setProperty('--ticker-duration', `${skins.length * 3.5}s`);
+    }
+    track.replaceChildren(...items);
+    ticker.classList.toggle('is-static', reducedMotion.matches);
+    ticker.hidden = false;
+}
+
+// A nonessential loop must stop while it can't be seen.
+function pauseTickerOffscreen() {
+    const ticker = $('trendTicker');
+    new IntersectionObserver(([entry]) => ticker.classList.toggle('is-paused', !entry.isIntersecting))
+        .observe(ticker);
+}
+
+function demoTrending() {
+    const all = Object.values(DEMO_SKINS).flat();
+    const byLiquidity = [...all].sort((a, b) => (b.skinstrack?.liquidity ?? 0) - (a.skinstrack?.liquidity ?? 0));
+    const premium = all.map(normalizeSkin).filter(s => s.cents >= 10000).sort((a, b) => b.cents - a.cents);
+    return { trending: byLiquidity.slice(0, 16), premium: premium.slice(0, 8) };
+}
+
+async function loadHome() {
+    const grid = $('premiumGrid');
+    setLoading(grid, 4);
+    if (state.demoMode) {
+        const demo = demoTrending();
+        renderTicker(demo.trending);
+        return renderSkins(demo.premium, grid);
+    }
+    try {
+        const [hot, premium] = await Promise.all([api.trending(20, 1), api.trending(8, 100)]);
+        renderTicker(hot.items);
+        renderSkins(premium.items, grid);
+    } catch (e) {
+        $('trendTicker').hidden = true;
+        setMessage(grid, e instanceof api.ApiError
+            ? 'Trending prices load once SkinsTrack data is available. Add SKINSTRACK_API_KEY to .env and restart the API.'
+            : 'Could not reach the API. Start it with scripts/dev.bat, then reload.');
+    }
 }
 
 // ─── Market search ─────────────────────────────────────────
@@ -408,6 +496,8 @@ function init() {
     fillWeaponSelect($('budgetWeapon'));
 
     document.querySelectorAll('.topnav-link').forEach(l => l.addEventListener('click', () => showPage(l.dataset.page)));
+    document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => showPage(b.dataset.goto)));
+    pauseTickerOffscreen();
     $('searchForm').addEventListener('submit', e => { e.preventDefault(); searchSkins(); });
     $('sortSelect').addEventListener('change', () => { if (state.skins.length) showFiltered(state.skins); });
     // On narrow screens the filters start collapsed above the results.
@@ -427,8 +517,12 @@ function init() {
     initModal();
 
     api.isServerUp().then(up => {
-        if (up) return showSkinstrackStatus();
+        if (up) {
+            loadHome();
+            return showSkinstrackStatus();
+        }
         enterDemoMode();
+        loadHome();
         $('weaponSelect').value = 'AK-47';
         state.skins = getDemoSkins('AK-47');
         showFiltered(state.skins);

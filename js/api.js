@@ -51,3 +51,5 @@ export function search(q, min, max) {
 export const optimizeBudget = (budget, query) => post('/budget/optimize', { budget, query });
 export const buildLoadout = payload => post('/loadout/build', payload);
 export const skinstrackStatus = () => request('/skinstrack/status', undefined, 4000);
+export const trending = (limit, min) =>
+    request(`/skinstrack/trending?${new URLSearchParams({ limit, min })}`, undefined, 4000);
