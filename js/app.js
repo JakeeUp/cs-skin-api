@@ -311,7 +311,8 @@ function pauseTickerOffscreen() {
 function demoTrending() {
     const all = Object.values(DEMO_SKINS).flat();
     const byLiquidity = [...all].sort((a, b) => (b.skinstrack?.liquidity ?? 0) - (a.skinstrack?.liquidity ?? 0));
-    const premium = all.map(normalizeSkin).filter(s => s.cents >= 10000).sort((a, b) => b.cents - a.cents);
+    const cents = s => normalizeSkin(s).cents;
+    const premium = all.filter(s => cents(s) >= 10000).sort((a, b) => cents(b) - cents(a));
     return { trending: byLiquidity.slice(0, 16), premium: premium.slice(0, 8) };
 }
 
