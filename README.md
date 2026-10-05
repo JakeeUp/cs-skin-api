@@ -274,7 +274,8 @@ cs-skin-api/
 │   └── main.cpp           # API server, knapsack algorithm, Steam fetcher
 ├── index.html              # Frontend UI
 ├── js/
-│   └── app.js              # Client-side logic and API calls
+│   ├── app.js              # Client-side logic and API calls
+│   └── demo-data.js        # Sample data for demo mode (GitHub Pages)
 ├── css/
 │   └── style.css           # Dark theme styling
 ├── CMakeLists.txt          # Build configuration
