@@ -154,9 +154,9 @@ h1, h2, h3, .logo-text, .topnav-link, .slot-title, .side-label, .btn-search, .bt
     background: var(--yellow); color: #111; border: 0; font-size: 18px; padding: 6px 18px;
     text-decoration: none;
 }
-.btn-search:hover, .btn-apply:hover, .btn-optimize:hover { background: #fafafa; color: #111; }
+.btn-search:hover, .btn-apply:hover, .btn-optimize:hover { background: #111; color: #fafafa; box-shadow: inset 0 0 0 3px #fafafa; }
 .btn-optimize { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; border: var(--bw) solid #fafafa; box-shadow: var(--shadow); }
-.btn-optimize:hover { box-shadow: 2px 2px 0 var(--yellow); transform: translate(4px, 4px); }
+.btn-optimize:hover { box-shadow: inset 0 0 0 3px #fafafa; }
 .btn-apply { flex: 1; border: var(--bw) solid #fafafa; }
 .btn-reset { background: #111; border: var(--bw) solid #fafafa; padding: 6px 16px; color: #fafafa; text-transform: uppercase; font-weight: 700; }
 .btn-reset:hover { background: #fafafa; color: #111; }
@@ -209,7 +209,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .toggle-wrap { position: relative; width: 44px; height: 24px; flex: none; }
 .toggle-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 1; }
 .toggle-track { position: absolute; inset: 0; background: #111; border: var(--bw) solid #fafafa; }
-.toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #fafafa; transition: transform 0.1s; }
+.toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #fafafa; }
 .toggle-input:checked + .toggle-track { background: var(--accent); }
 .toggle-input:checked + .toggle-track::after { transform: translateX(20px); background: #111; }
 .toggle-input:focus-visible + .toggle-track { outline: 3px solid var(--accent); outline-offset: 2px; }
@@ -235,7 +235,6 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
     --rarity: #fafafa;
     position: relative; display: block; background: #111; border: var(--bw) solid #fafafa;
     border-top: 8px solid var(--rarity); box-shadow: 5px 5px 0 #fafafa; overflow: hidden;
-    transition: box-shadow 0.08s, transform 0.08s, border-color 0.08s;
 }
 .skin-card:hover { border-color: var(--accent); border-top-color: var(--rarity); box-shadow: 8px 8px 0 var(--accent); transform: translate(-3px, -3px); }
 
@@ -505,6 +504,10 @@ button.skin-card:focus-visible { outline-offset: 4px; }
 @media (prefers-reduced-motion: no-preference) {
     .logo:hover, .topnav-link:hover { animation: jitter 0.18s steps(2) infinite; }
 }
+/* Tool pages: hover is an instant hard invert, never a transition. */
+.page:not(#page-home) *, .page:not(#page-home) *::before, .page:not(#page-home) *::after { transition: none !important; }
+.wear-chip input:checked + span:hover, .view-btn.active:hover { background: #111; color: #fafafa; }
+
 /* Reduced motion removes movement and keeps color feedback. */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; }
