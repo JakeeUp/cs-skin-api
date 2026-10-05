@@ -11,6 +11,7 @@ if(WIN32 AND EXISTS "C:/msys64/ucrt64")
 endif()
 
 find_package(CURL REQUIRED)
+find_package(nlohmann_json 3 REQUIRED)
 
 # Everything except main.cpp, so tests can link the same code.
 add_library(skin_core STATIC
@@ -22,6 +23,7 @@ add_library(skin_core STATIC
 )
 target_include_directories(skin_core PUBLIC src third_party)
 target_link_libraries(skin_core PUBLIC CURL::libcurl)
+target_link_libraries(skin_core PUBLIC nlohmann_json::nlohmann_json)
 
 add_executable(cs-skin-api src/main.cpp)
 target_link_libraries(cs-skin-api PRIVATE skin_core)
