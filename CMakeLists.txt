@@ -26,14 +26,15 @@ target_include_directories(skin_core PUBLIC src third_party)
 target_link_libraries(skin_core PUBLIC CURL::libcurl)
 target_link_libraries(skin_core PUBLIC nlohmann_json::nlohmann_json)
 
+# SkinstrackStore runs a background thread.
+find_package(Threads REQUIRED)
+target_link_libraries(skin_core PUBLIC Threads::Threads)
+
 add_executable(cs-skin-api src/main.cpp)
 target_link_libraries(cs-skin-api PRIVATE skin_core)
 
 if(WIN32)
     target_link_libraries(cs-skin-api PRIVATE ws2_32 wsock32 mswsock)
-else()
-    find_package(Threads REQUIRED)
-    target_link_libraries(cs-skin-api PRIVATE Threads::Threads)
 endif()
 
 option(BUILD_TESTING "Build the unit tests" ON)
