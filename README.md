@@ -20,7 +20,7 @@
 SkinAPI is a REST API that pulls live CS2 skin pricing from the Steam Community Market and exposes search, price lookup, budget optimization, and full loadout building through a clean JSON interface. The frontend provides a responsive dark-themed UI with grid/list views and client-side filtering.
 
 <!-- Replace with a screenshot of the full app UI -->
-![App Overview](Screenshot.png)
+![App Overview](assets/screenshot.png)
 
 ---
 
@@ -281,6 +281,7 @@ cs-skin-api/
 ├── third_party/
 │   └── crow_all.h          # Crow HTTP framework (single header)
 └── assets/                 # Screenshots and demo GIFs
+    ├── screenshot.png
     ├── search-demo.gif
     ├── budget-demo.gif
     └── loadout-demo.gif
