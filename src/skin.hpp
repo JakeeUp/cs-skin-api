@@ -10,4 +10,5 @@ struct Skin {
     std::string market_url;
     int         price_cents;
     int         listings;
+    std::string rarity;       // e.g. "Covert"; empty when unknown
 };

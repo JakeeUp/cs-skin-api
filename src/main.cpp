@@ -72,6 +72,7 @@ static crow::json::wvalue skinToJson(const Skin& s) {
     j["sell_listings"]   = s.listings;
     j["icon_url"]        = s.icon_url;
     j["market_url"]      = s.market_url;
+    j["rarity"]          = s.rarity;
     return j;
 }
 
@@ -84,6 +85,7 @@ static crow::json::wvalue skinOptionJson(const Skin& s) {
     o["listings"]    = s.listings;
     o["icon_url"]    = s.icon_url;
     o["market_url"]  = s.market_url;
+    o["rarity"]      = s.rarity;
     return o;
 }
 

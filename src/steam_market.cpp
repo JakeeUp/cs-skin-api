@@ -8,6 +8,44 @@
 
 using json = nlohmann::json;
 
+// ─── Rarity ────────────────────────────────────────────────
+
+std::string extractRarity(const std::string& type) {
+    static const char* const PREFIXES[] = {
+        "\xE2\x98\x85 ",          // "★ "
+        "StatTrak\xE2\x84\xA2 ",  // "StatTrak™ "
+        "Souvenir ",
+    };
+    static const char* const RARITIES[] = {
+        "Consumer Grade", "Industrial Grade", "Mil-Spec Grade", "Restricted",
+        "Classified",     "Covert",           "Contraband",     "Extraordinary",
+    };
+
+    // Strip any combination of the star / StatTrak / Souvenir prefixes.
+    std::string t = type;
+    for (bool stripped = true; stripped; ) {
+        stripped = false;
+        for (const char* p : PREFIXES) {
+            std::string prefix = p;
+            if (t.compare(0, prefix.size(), prefix) == 0) {
+                t.erase(0, prefix.size());
+                stripped = true;
+            }
+        }
+    }
+
+    // The rarity must be a whole leading word group: "Covert Knife", "Covert".
+    for (const char* r : RARITIES) {
+        std::string rarity = r;
+        if (t.compare(0, rarity.size(), rarity) == 0 &&
+            (t.size() == rarity.size() || t[rarity.size()] == ' '))
+            return rarity;
+    }
+    return "";
+}
+
+// ─── Steam search ──────────────────────────────────────────
+
 // Rate-limit delay between Steam API requests to avoid HTTP 429
 static constexpr int STEAM_RATE_LIMIT_MS = 150;
 
@@ -75,6 +113,10 @@ static void fetchPage(
             auto& desc = item["asset_description"];
             if (!desc.contains("icon_url")) continue;
 
+            std::string type;
+            if (desc.contains("type") && desc["type"].is_string())
+                type = desc["type"].get<std::string>();
+
             seen.insert(hash);
             skins.push_back({
                 item["name"].get<std::string>(),
@@ -86,7 +128,8 @@ static void fetchPage(
                 "https://steamcommunity.com/market/listings/730/"
                     + urlEncode(hash),
                 price,
-                listings
+                listings,
+                extractRarity(type)
             });
             added++;
         }

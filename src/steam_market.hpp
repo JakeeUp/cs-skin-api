@@ -4,6 +4,13 @@
 #include <string>
 #include <vector>
 
+// Extracts the weapon-skin rarity from a Steam `asset_description.type`
+// string such as "StatTrak™ Classified Pistol" or "★ Covert Knife".
+// Returns one of: Consumer Grade, Industrial Grade, Mil-Spec Grade,
+// Restricted, Classified, Covert, Contraband, Extraordinary — or "" when
+// the type carries no recognized rarity (stickers, cases, garbage).
+std::string extractRarity(const std::string& type);
+
 // Fetches `pages` pages of Steam market results for a query across two sort
 // orders (popular + price), keeping skins priced within [min_cents, max_cents].
 void fetchQuery(
