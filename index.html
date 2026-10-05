@@ -9,19 +9,20 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/chaos.css">
 </head>
 <body>
     <a class="skip-link" href="#main">Skip to content</a>
 
     <header class="topbar">
         <div class="topbar-inner">
-            <div class="logo">
+            <div class="logo" id="siteLogo">
                 <svg class="logo-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
                     <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
                     <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
                 </svg>
-                <span class="logo-text">SkinAPI</span>
+                <span class="logo-text">SkinAPI</span><span class="logo-corp">CORP</span>
             </div>
             <nav class="topnav" aria-label="Primary">
                 <button type="button" class="topnav-link active" data-page="home" aria-current="page">Home</button>
@@ -43,19 +44,62 @@
     <main id="main">
         <!-- MARKET -->
         <section id="page-home" class="page active" aria-labelledby="homeTitle">
-            <div class="home-hero">
-                <h1 id="homeTitle">What CS2 is trading right now</h1>
-                <p>The most liquid skins on the market, ranked from live SkinsTrack prices and refreshed daily.</p>
-                <button type="button" class="btn-optimize" data-goto="market">Browse the market</button>
+            <div class="h-stage">
+                <h1 id="homeTitle" class="mega">The skins have <mark>already</mark> been notified</h1>
+
+                <aside class="win win-tracker" aria-label="Tracking">
+                    <div class="win-bar"><span class="win-title">TRACKING.DAT</span><span class="ctl" aria-hidden="true">_ X</span></div>
+                    <div class="win-body">
+                        <p class="tiny-label">Skins you didn't buy</p>
+                        <p class="big-num"><span id="chaosCounter">0</span></p>
+                        <p class="tiny">This number goes nowhere. It only climbs.</p>
+                    </div>
+                </aside>
+
+                <div class="win win-cta white">
+                    <div class="win-bar"><span class="win-title">OFFER (EXPIRES)</span><span class="ctl" aria-hidden="true">_ X</span></div>
+                    <div class="win-body">
+                        <p class="cta-copy">Own <mark>everything</mark>. Feel nothing. Our legal team says that counts as a lifestyle.</p>
+                        <div class="cta-row">
+                            <button type="button" id="checkoutTrapBtn" class="btn-optimize">BUY EVERY SKIN</button>
+                            <button type="button" class="btn-guilt" data-goto="market">No thanks, I enjoy overpaying</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="ticker" id="trendTicker" role="region" aria-label="Trending skins">
-                <ul class="ticker-track" id="trendTrack"></ul>
+            <div class="tape">
+                <div class="tape-label"><span>TRENDING<br>TAPE</span><small>past performance is a vibe</small></div>
+                <div class="ticker" id="trendTicker" role="region" aria-label="Trending skins">
+                    <ul class="ticker-track" id="trendTrack"></ul>
+                </div>
+            </div>
+
+            <div class="h-stage h-stage-2">
+                <div class="win win-count">
+                    <div class="win-bar"><span class="win-title">COUNTDOWN.EXE</span><span class="ctl" aria-hidden="true">_ X</span></div>
+                    <div class="win-body">
+                        <p class="tiny-label" id="chaosCountdownLabel">Until: The Event (details withheld)</p>
+                        <p class="big-num" role="timer" aria-live="off"><span id="chaosCountdown" aria-labelledby="chaosCountdownLabel">--:--:--:--</span></p>
+                        <p class="tiny">Format: days:hours:minutes:seconds. Purpose: none.</p>
+                    </div>
+                </div>
+
+                <div class="win win-about white">
+                    <div class="win-bar"><span class="win-title">ABOUT US.TXT</span><span class="ctl" aria-hidden="true">_ X</span></div>
+                    <div class="win-body">
+                        <h2>About SkinAPI Corp</h2>
+                        <p>SkinAPI Corp exists. You are reading this, therefore you are a stakeholder. Stakeholders do not leave.</p>
+                        <p>We monitor prices the way a lighthouse monitors boats: constantly, and with no intention of rescuing anyone. Every skin you have not bought has been noted, filed, and gently held against you.</p>
+                        <p><mark>Our mission:</mark> to be the last tab you close. Our vision: unclear, but well funded. Our values: available upon request, which we will decline.</p>
+                        <p>The Market, Budget, and Loadout tools are real and honest. The rest of this page is a bit. SkinAPI Corp is fictional.</p>
+                    </div>
+                </div>
             </div>
 
             <div class="home-section">
-                <h2>Premium picks</h2>
-                <p>Knives, gloves and top-tier skins over $100 that still sell fast.</p>
+                <h2><mark>Premium picks</mark></h2>
+                <p>Knives, gloves and top-tier skins over $100 that still sell fast. Real prices, fake enthusiasm.</p>
                 <div id="premiumGrid" class="skin-grid" aria-live="polite"></div>
             </div>
         </section>
@@ -224,8 +268,14 @@
         </section>
     </main>
 
+    <footer class="legal">
+        <p><strong>SkinAPI Corp</strong> is a fictional company. It is not responsible for skins, feelings, regret, or the passage of time. By scrolling you agree to nothing, retroactively. Terms are void where prohibited and also where permitted. Satire applies to the Home page only: Market, Budget, and Loadout prices come from Steam Market listings and SkinsTrack and are shown as received.</p>
+    </footer>
+
     <dialog id="skinModal" class="modal" aria-labelledby="skinModalTitle"></dialog>
+    <div id="chaosLayer"></div>
 
     <script type="module" src="js/app.js"></script>
+    <script type="module" src="js/chaos.js"></script>
 </body>
 </html>
