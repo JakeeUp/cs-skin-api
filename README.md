@@ -18,10 +18,11 @@
 
 ## Overview
 
-SkinAPI is a REST API that pulls live CS2 skin pricing from the Steam Community Market and exposes search, price lookup, budget optimization, and full loadout building through a clean JSON interface. The frontend provides a responsive dark-themed UI with grid/list views and client-side filtering.
+SkinAPI is a C++17 REST API that pulls live CS2 skin prices from the Steam Community Market and [SkinsTrack](https://skinstrack.com), and exposes trending skins, search, price comparison, budget optimization, and loadout building through a JSON interface.
 
-<!-- Replace with a screenshot of the full app UI -->
-![App Overview](assets/screenshot.png)
+The frontend is a brutalist, deliberately unauthorized-looking storefront for the fictional **SkinAPI Corp**: safety-yellow ticker tape, condensed headlines, raw monospace, and satire on the Home page only. The tools themselves (Market, Budget, Loadout) stay honest: real prices, real Steam links, no tricks.
+
+![Home page: trending skins tape under the nav](assets/screenshots/home.png)
 
 ---
 
@@ -30,20 +31,28 @@ SkinAPI is a REST API that pulls live CS2 skin pricing from the Steam Community 
 ### Home: Trending Skins
 The landing page shows a continuously scrolling row of the most liquid skins on the market, plus a grid of premium picks over $100. Both come from the cached SkinsTrack snapshot, so they never spend API calls. The row pauses on hover or keyboard focus and becomes a still, swipeable row for visitors who prefer reduced motion.
 
+Home also carries the SkinAPI Corp satire: a "BUY EVERY SKIN" checkout that loops forever (it has no input fields and collects nothing), a countdown to a pointless event beside a real one for the next price refresh, a "Deal of the 10 Minutes" with a real price, and a few easter eggs.
+
+<p align="center"><img src="assets/screenshots/mobile.png" alt="Home page on a phone" width="300"></p>
+
 ### Market Search
 Search CS2 skins by weapon name with live Steam Market data. Filter results by price range, wear condition (FN/MW/FT/WW/BS), and StatTrak status. Toggle between grid and list views.
 
-<!-- ![Market Search Demo](assets/search-demo.gif) -->
+Each card shows the Steam price beside the SkinsTrack price, a liquidity meter, and how far the two differ. Click a card to compare both sources side by side.
+
+![Market search for AK-47 with filters](assets/screenshots/market.png)
+
+![Detail view comparing Steam and SkinsTrack prices](assets/screenshots/detail.png)
 
 ### Budget Optimizer
 Enter a dollar budget and a weapon — the optimizer fetches available skins and runs a **0/1 knapsack algorithm** to select the combination that maximizes total value without exceeding your budget. Uses dynamic programming for budgets up to $500, with a greedy fallback for larger inputs.
 
-<!-- ![Budget Optimizer Demo](assets/budget-demo.gif) -->
+![Budget optimizer spending exactly $50.00 across 15 AWP skins](assets/screenshots/budget.png)
 
 ### Loadout Builder
 Pick T or CT side and set separate budgets for primary weapons, secondary weapons, knife, and gloves. A **round-robin interleaving algorithm** ensures variety across weapon types — you won't get five AK-47 skins when you wanted a diverse loadout.
 
-<!-- ![Loadout Builder Demo](assets/loadout-demo.gif) -->
+![Loadout builder for T side](assets/screenshots/loadout.png)
 
 ---
 
@@ -449,8 +458,8 @@ cs-skin-api/
 │       └── ci.yml            # CI/CD pipeline
 ├── third_party/
 │   └── crow_all.h            # Crow HTTP framework (single header)
-└── assets/                   # Screenshots and demo GIFs
-    └── screenshot.png
+└── assets/
+    └── screenshots/          # README screenshots (home, mobile, market, detail, budget, loadout)
 ```
 
 ---
