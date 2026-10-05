@@ -367,7 +367,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 
 .loadout-slots { display: grid; gap: 28px; }
 .slot-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-.slot-icon { font-size: 18px; }
+.slot-icon { display: inline-flex; color: var(--accent); }
 .slot-title { font-weight: 600; flex: 1; min-width: 0; }
 .slot-budget-tag { font-size: 12px; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 10px; }
 

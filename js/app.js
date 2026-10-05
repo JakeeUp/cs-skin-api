@@ -31,6 +31,32 @@ function h(tag, attrs = {}, ...children) {
     return el;
 }
 
+// ─── Icons ─────────────────────────────────────────────────
+// Drawn on a 24px grid with one 1.5px stroke so every icon matches.
+
+const ICON_PATHS = {
+    rifle:  ['M2 11h13l2-2h5v3h-5l-1.5 2H12l-1 5H7.5l1-5H2z', 'M5 11V9'],
+    pistol: ['M3 7h16v4h-6.5l-1 2H10l-1.2 6H5.5l1.2-6H3z'],
+    knife:  ['M3 21l6.5-6.5', 'M9.5 14.5L20 3l-1.5 7.5-6 6z'],
+    gloves: ['M7 21v-4.5L4 12.5l1.2-1.2L8 13V5.5a1.2 1.2 0 0 1 2.4 0V11V4.2a1.2 1.2 0 0 1 2.4 0V11V5.5a1.2 1.2 0 0 1 2.4 0V12V8a1.2 1.2 0 0 1 2.4 0v8L16 21z'],
+    crosshair: ['M12 3v5M12 16v5M3 12h5M16 12h5', 'M12 5.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 1 0 0-13z'],
+};
+
+function icon(name, size = 18) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    for (const [k, v] of Object.entries({
+        viewBox: '0 0 24 24', width: size, height: size, fill: 'none', stroke: 'currentColor',
+        'stroke-width': '1.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true',
+    })) svg.setAttribute(k, v);
+    for (const d of ICON_PATHS[name]) {
+        const path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', d);
+        svg.append(path);
+    }
+    return svg;
+}
+
 function setLoading(container, count = 8) {
     const card = () => h('div', { class: 'skin-card skeleton', 'aria-hidden': 'true' },
         h('div', { class: 'sk-img' }), h('div', { class: 'sk-line' }),
@@ -108,7 +134,7 @@ function skinCard(skin) {
             pct != null && pct !== 0 && discountBadge(pct),
             skin.iconUrl
                 ? h('img', { src: skin.iconUrl, alt: '', loading: 'lazy' })
-                : h('span', { class: 'skin-img-placeholder' }, '◈')),
+                : h('span', { class: 'skin-img-placeholder' }, icon('crosshair', 34))),
         h('span', { class: 'skin-body blk' },
             h('span', { class: 'skin-wear-row' },
                 wearBadge(wear),
@@ -447,7 +473,6 @@ const SLOT_LABELS = {
     T:  { primary: 'Primary — AK-47 / SG 553 / Galil AR', secondary: 'Secondary — Glock-18 / Tec-9 / Deagle' },
     CT: { primary: 'Primary — M4A4 / M4A1-S / AUG', secondary: 'Secondary — USP-S / P2000 / Five-SeveN' },
 };
-const GUN = '🔫';
 
 function demoSlots(side, knifeBudget, glovesBudget) {
     const slots = side === 'T'
@@ -476,10 +501,10 @@ async function buildLoadout() {
     const per = weapons / 2;
     const labels = SLOT_LABELS[state.side];
     const sections = [];
-    if (slots.primary)   sections.push(slotSection('primary', labels.primary, GUN, per, slots.primary));
-    if (slots.secondary) sections.push(slotSection('secondary', labels.secondary, GUN, per, slots.secondary));
-    if (slots.knife)     sections.push(slotSection('knife', 'Knife', '🔪', knife, slots.knife));
-    if (slots.gloves)    sections.push(slotSection('gloves', 'Gloves', '🧤', gloves, slots.gloves));
+    if (slots.primary)   sections.push(slotSection('primary', labels.primary, icon('rifle'), per, slots.primary));
+    if (slots.secondary) sections.push(slotSection('secondary', labels.secondary, icon('pistol'), per, slots.secondary));
+    if (slots.knife)     sections.push(slotSection('knife', 'Knife', icon('knife'), knife, slots.knife));
+    if (slots.gloves)    sections.push(slotSection('gloves', 'Gloves', icon('gloves'), gloves, slots.gloves));
     results.replaceChildren(h('div', { class: 'loadout-slots' }, sections));
 }
 
