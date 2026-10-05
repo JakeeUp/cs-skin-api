@@ -141,6 +141,9 @@ TEST(load_rejects_out_of_range_numbers) {
 
     TempEnvFile bad("PORT=abc\n");
     CHECK_EQ(loadConfig(bad.path.string()).port, 8080);
+
+    TempEnvFile junk("PORT=80abc\n");
+    CHECK_EQ(loadConfig(junk.path.string()).port, 8080);
 }
 
 TEST(env_vars_override_file) {

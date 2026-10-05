@@ -32,8 +32,9 @@ std::optional<std::pair<std::string, std::string>> parseEnvLine(const std::strin
 
 static int toInt(const std::string& s, int fallback, int lo, int hi) {
     try {
-        int v = std::stoi(s);
-        if (v >= lo && v <= hi) return v;
+        size_t used = 0;
+        int v = std::stoi(s, &used);
+        if (used == s.size() && v >= lo && v <= hi) return v;
     } catch (...) {}
     std::cerr << "[config] Ignoring out-of-range value '" << s << "'" << std::endl;
     return fallback;
