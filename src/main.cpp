@@ -3,13 +3,63 @@
 #include "http_client.hpp"
 #include "optimizer.hpp"
 #include "steam_market.hpp"
+#include "validation.hpp"
 #include <nlohmann/json.hpp>
+#include <climits>
 #include <iostream>
 #include <set>
 #include <string>
 #include <vector>
 
 using json = nlohmann::json;
+
+// POST bodies are tiny JSON objects; anything larger is rejected.
+static constexpr size_t MAX_BODY_BYTES = 4096;
+
+// ─── Response helpers ──────────────────────────────────────
+
+static crow::response jsonResponse(int code, const crow::json::wvalue& body) {
+    crow::response res(code, body.dump());
+    res.set_header("Content-Type",           "application/json");
+    res.set_header("X-Content-Type-Options", "nosniff");
+    res.set_header("Cache-Control",          "no-store");
+    return res;
+}
+
+static crow::response jsonError(int code, const std::string& message) {
+    crow::json::wvalue e;
+    e["error"] = message;
+    return jsonResponse(code, e);
+}
+
+// Parses a POST body as a JSON object, or explains why it can't.
+static std::optional<json> parseBody(const crow::request& req, crow::response& error) {
+    if (req.body.size() > MAX_BODY_BYTES) {
+        error = jsonError(413, "Request body too large");
+        return std::nullopt;
+    }
+    auto body = json::parse(req.body, nullptr, false);
+    if (body.is_discarded() || !body.is_object()) {
+        error = jsonError(400, "Body must be a JSON object");
+        return std::nullopt;
+    }
+    return body;
+}
+
+// Reads an optional numeric dollar field from a JSON body.
+static std::optional<double> bodyDollars(const json& body, const char* key) {
+    if (!body.contains(key)) return 0.0;
+    if (!body[key].is_number()) return std::nullopt;
+    return checkDollars(body[key].get<double>());
+}
+
+// Reads an optional string field; a wrong type yields "" so validation rejects it.
+static std::string bodyString(const json& body, const char* key, const std::string& fallback) {
+    if (!body.contains(key)) return fallback;
+    return body[key].is_string() ? body[key].get<std::string>() : "";
+}
+
+// ─── Skin serialization ────────────────────────────────────
 
 // Full Steam search response shape (used by /search).
 static crow::json::wvalue skinToJson(const Skin& s) {
@@ -44,6 +94,8 @@ static std::vector<crow::json::wvalue> toOptionList(const std::vector<Skin>& ski
     return out;
 }
 
+// ─── Main ──────────────────────────────────────────────────
+
 int main() {
     const Config config = loadConfig();
     setHttpCaBundle(config.ca_bundle);
@@ -66,26 +118,33 @@ int main() {
         crow::json::wvalue r;
         r["status"]  = "ok";
         r["message"] = "CS Skin API is alive";
-        return r;
+        return jsonResponse(200, r);
     });
 
     // GET /search?q=AK-47&min=0&max=300
     CROW_ROUTE(app, "/search")([](const crow::request& req) {
-        std::string query = req.url_params.get("q") ? req.url_params.get("q") : "";
-        if (query.empty()) {
-            crow::json::wvalue e;
-            e["error"] = "Missing query parameter ?q=";
-            return e;
-        }
+        const char* q = req.url_params.get("q");
+        std::string query = q ? q : "";
+        if (!isValidQuery(query))
+            return jsonError(400, "Query ?q= is required (max 64 characters)");
 
-        double min_d = req.url_params.get("min") ? std::stod(req.url_params.get("min")) : 0.0;
-        double max_d = req.url_params.get("max") ? std::stod(req.url_params.get("max")) : 999999.0;
-        int min_cents = static_cast<int>(std::max(0.0, min_d) * 100);
-        int max_cents = static_cast<int>(std::max(0.0, max_d) * 100);
+        int min_cents = 0;
+        int max_cents = INT_MAX;
+        if (const char* v = req.url_params.get("min")) {
+            auto d = parseDollars(v);
+            if (!d) return jsonError(400, "min must be a dollar amount between 0 and 10000");
+            min_cents = toCents(*d);
+        }
+        if (const char* v = req.url_params.get("max")) {
+            auto d = parseDollars(v);
+            if (!d) return jsonError(400, "max must be a dollar amount between 0 and 10000");
+            max_cents = toCents(*d);
+        }
+        if (min_cents > max_cents)
+            return jsonError(400, "min cannot be greater than max");
 
         std::vector<Skin>     skins;
         std::set<std::string> seen;
-
         fetchQuery(query, 10, min_cents, max_cents, skins, seen);
 
         std::vector<crow::json::wvalue> results;
@@ -96,94 +155,72 @@ int main() {
         crow::json::wvalue r;
         r["total_count"] = static_cast<int>(results.size());
         r["results"]     = std::move(results);
-        return r;
+        return jsonResponse(200, r);
     });
 
     // GET /price?name=AK-47+Redline+(Field-Tested)
     CROW_ROUTE(app, "/price")([](const crow::request& req) {
-        std::string name = req.url_params.get("name") ? req.url_params.get("name") : "";
-        if (name.empty()) {
-            crow::json::wvalue e;
-            e["error"] = "Missing name parameter ?name=";
-            return e;
-        }
+        const char* n = req.url_params.get("name");
+        std::string name = n ? n : "";
+        if (name.empty() || name.size() > 128)
+            return jsonError(400, "Missing or too long name parameter ?name=");
 
-        std::string url =
+        std::string raw = fetchURL(
             "https://steamcommunity.com/market/priceoverview/?appid=730&currency=1"
-            "&market_hash_name=" + urlEncode(name);
+            "&market_hash_name=" + urlEncode(name));
 
-        std::string raw = fetchURL(url);
+        auto data = json::parse(raw, nullptr, false);
+        if (data.is_discarded() || !data.is_object())
+            return jsonError(502, "Steam did not return a price for that item");
 
-        try {
-            auto data = json::parse(raw);
-            crow::json::wvalue r;
-            r["name"]         = name;
-            r["lowest_price"] = data.value("lowest_price", "N/A");
-            r["median_price"] = data.value("median_price", "N/A");
-            r["volume"]       = data.value("volume", "N/A");
-            return r;
-        } catch (const std::exception& e) {
-            crow::json::wvalue err;
-            err["error"] = e.what();
-            return err;
-        }
+        crow::json::wvalue r;
+        r["name"]         = name;
+        r["lowest_price"] = data.value("lowest_price", "N/A");
+        r["median_price"] = data.value("median_price", "N/A");
+        r["volume"]       = data.value("volume", "N/A");
+        return jsonResponse(200, r);
     });
 
     // POST /budget/optimize
     // Body: { "budget": 50.00, "query": "AK-47" }
     CROW_ROUTE(app, "/budget/optimize").methods(crow::HTTPMethod::Post)([](const crow::request& req) {
-        try {
-            auto body = json::parse(req.body);
-            double budget     = body.value("budget", 0.0);
-            std::string query = body.value("query", "");
+        crow::response error;
+        auto body = parseBody(req, error);
+        if (!body) return error;
 
-            if (budget <= 0 || query.empty()) {
-                crow::json::wvalue e;
-                e["error"] = "Missing or invalid budget/query";
-                return e;
-            }
+        auto budget = bodyDollars(*body, "budget");
+        std::string query = bodyString(*body, "query", "");
 
-            if (budget > 10000.0) {
-                crow::json::wvalue e;
-                e["error"] = "Budget cannot exceed $10,000";
-                return e;
-            }
+        if (!budget || *budget <= 0)
+            return jsonError(400, "budget must be between 0 and 10000");
+        if (!isValidQuery(query))
+            return jsonError(400, "query is required (max 64 characters)");
 
-            int budget_cents = static_cast<int>(budget * 100);
+        int budget_cents = toCents(*budget);
 
-            std::vector<Skin>     skins;
-            std::set<std::string> seen;
-            fetchQuery(query, 10, 1, budget_cents, skins, seen);
+        std::vector<Skin>     skins;
+        std::set<std::string> seen;
+        fetchQuery(query, 10, 1, budget_cents, skins, seen);
 
-            if (skins.empty()) {
-                crow::json::wvalue e;
-                e["error"] = "No skins found within budget.";
-                return e;
-            }
+        if (skins.empty())
+            return jsonError(404, "No skins found within budget.");
 
-            // Run knapsack to find the optimal combination within budget
-            auto selected = knapsackOptimize(skins, budget_cents);
+        // Run knapsack to find the optimal combination within budget
+        auto selected = knapsackOptimize(skins, budget_cents);
 
-            int total_cents = 0;
-            for (const auto& s : selected) total_cents += s.price_cents;
-            double total_spent = total_cents / 100.0;
+        int total_cents = 0;
+        for (const auto& s : selected) total_cents += s.price_cents;
 
-            crow::json::wvalue r;
-            r["budget"]         = budget;
-            r["total_spent"]    = total_spent;
-            r["remaining"]      = budget - total_spent;
-            r["skins_found"]    = static_cast<int>(skins.size());
-            r["skins_selected"] = static_cast<int>(selected.size());
-            r["algorithm"]      = usesGreedy(budget_cents, static_cast<int>(skins.size()))
-                                   ? "greedy" : "knapsack_dp";
-            r["skins"]          = toOptionList(selected);
-            return r;
-
-        } catch (const std::exception& e) {
-            crow::json::wvalue err;
-            err["error"] = e.what();
-            return err;
-        }
+        crow::json::wvalue r;
+        r["budget"]         = *budget;
+        r["total_spent"]    = total_cents / 100.0;
+        r["remaining"]      = (budget_cents - total_cents) / 100.0;
+        r["skins_found"]    = static_cast<int>(skins.size());
+        r["skins_selected"] = static_cast<int>(selected.size());
+        r["algorithm"]      = usesGreedy(budget_cents, static_cast<int>(skins.size()))
+                               ? "greedy" : "knapsack_dp";
+        r["skins"]          = toOptionList(selected);
+        return jsonResponse(200, r);
     });
 
     // POST /loadout/build
@@ -195,71 +232,61 @@ int main() {
     //   "gloves_budget":   30.00    -- 0 or omitted = skip
     // }
     CROW_ROUTE(app, "/loadout/build").methods(crow::HTTPMethod::Post)([](const crow::request& req) {
-        try {
-            auto body = json::parse(req.body);
+        crow::response error;
+        auto body = parseBody(req, error);
+        if (!body) return error;
 
-            std::string side      = body.value("side",           "T");
-            double weapons_budget = body.value("weapons_budget", 0.0);
-            double knife_budget   = body.value("knife_budget",   0.0);
-            double gloves_budget  = body.value("gloves_budget",  0.0);
+        std::string side = bodyString(*body, "side", "T");
+        auto weapons_budget = bodyDollars(*body, "weapons_budget");
+        auto knife_budget   = bodyDollars(*body, "knife_budget");
+        auto gloves_budget  = bodyDollars(*body, "gloves_budget");
 
-            if (side != "T" && side != "CT") {
-                crow::json::wvalue e;
-                e["error"] = "side must be 'T' or 'CT'";
-                return e;
-            }
+        if (side != "T" && side != "CT")
+            return jsonError(400, "side must be 'T' or 'CT'");
+        if (!weapons_budget || *weapons_budget <= 0)
+            return jsonError(400, "weapons_budget must be between 0 and 10000");
+        if (!knife_budget || !gloves_budget)
+            return jsonError(400, "knife_budget and gloves_budget must be between 0 and 10000");
 
-            if (weapons_budget <= 0) {
-                crow::json::wvalue e;
-                e["error"] = "weapons_budget must be greater than 0";
-                return e;
-            }
+        int per_weapon_cents = toCents(*weapons_budget / 2.0);
+        int knife_cents      = toCents(*knife_budget);
+        int gloves_cents     = toCents(*gloves_budget);
 
-            int per_weapon_cents = static_cast<int>((weapons_budget / 2.0) * 100);
-            int knife_cents      = static_cast<int>(knife_budget  * 100);
-            int gloves_cents     = static_cast<int>(gloves_budget * 100);
+        std::cerr << "[loadout/build] side=" << side
+                  << " weapons=" << *weapons_budget
+                  << " knife="   << *knife_budget
+                  << " gloves="  << *gloves_budget << std::endl;
 
-            std::cerr << "[loadout/build] side=" << side
-                      << " weapons=" << weapons_budget
-                      << " knife="   << knife_budget
-                      << " gloves="  << gloves_budget << std::endl;
+        // Weapon lists per side
+        std::vector<std::string> primary_queries;
+        std::vector<std::string> secondary_queries;
 
-            // Weapon lists per side
-            std::vector<std::string> primary_queries;
-            std::vector<std::string> secondary_queries;
-
-            if (side == "CT") {
-                primary_queries   = {"M4A4", "M4A1-S", "AUG", "FAMAS"};
-                secondary_queries = {"USP-S", "P2000", "Five-SeveN", "P250"};
-            } else {
-                primary_queries   = {"AK-47", "SG 553", "Galil AR"};
-                secondary_queries = {"Glock-18", "Tec-9", "Desert Eagle"};
-            }
-
-            crow::json::wvalue slots;
-            auto addSlot = [&](const char* key, const std::vector<std::string>& queries, int cents) {
-                auto opts = fetchSlotOptions(queries, cents, 5);
-                if (!opts.empty()) slots[key] = toOptionList(opts);
-            };
-
-            addSlot("primary",   primary_queries,   per_weapon_cents);
-            addSlot("secondary", secondary_queries, per_weapon_cents);
-            if (knife_cents  > 0) addSlot("knife",  {"Knife"},  knife_cents);
-            if (gloves_cents > 0) addSlot("gloves", {"Gloves"}, gloves_cents);
-
-            crow::json::wvalue r;
-            r["side"]           = side;
-            r["weapons_budget"] = weapons_budget;
-            r["knife_budget"]   = knife_budget;
-            r["gloves_budget"]  = gloves_budget;
-            r["slots"]          = std::move(slots);
-            return r;
-
-        } catch (const std::exception& e) {
-            crow::json::wvalue err;
-            err["error"] = e.what();
-            return err;
+        if (side == "CT") {
+            primary_queries   = {"M4A4", "M4A1-S", "AUG", "FAMAS"};
+            secondary_queries = {"USP-S", "P2000", "Five-SeveN", "P250"};
+        } else {
+            primary_queries   = {"AK-47", "SG 553", "Galil AR"};
+            secondary_queries = {"Glock-18", "Tec-9", "Desert Eagle"};
         }
+
+        crow::json::wvalue slots;
+        auto addSlot = [&](const char* key, const std::vector<std::string>& queries, int cents) {
+            auto opts = fetchSlotOptions(queries, cents, 5);
+            if (!opts.empty()) slots[key] = toOptionList(opts);
+        };
+
+        addSlot("primary",   primary_queries,   per_weapon_cents);
+        addSlot("secondary", secondary_queries, per_weapon_cents);
+        if (knife_cents  > 0) addSlot("knife",  {"Knife"},  knife_cents);
+        if (gloves_cents > 0) addSlot("gloves", {"Gloves"}, gloves_cents);
+
+        crow::json::wvalue r;
+        r["side"]           = side;
+        r["weapons_budget"] = *weapons_budget;
+        r["knife_budget"]   = *knife_budget;
+        r["gloves_budget"]  = *gloves_budget;
+        r["slots"]          = std::move(slots);
+        return jsonResponse(200, r);
     });
 
     app.port(static_cast<uint16_t>(config.port)).multithreaded().run();

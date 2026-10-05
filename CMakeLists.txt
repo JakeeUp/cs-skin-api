@@ -18,6 +18,7 @@ add_library(skin_core STATIC
     src/http_client.cpp
     src/optimizer.cpp
     src/steam_market.cpp
+    src/validation.cpp
 )
 target_include_directories(skin_core PUBLIC src third_party)
 target_link_libraries(skin_core PUBLIC CURL::libcurl)
