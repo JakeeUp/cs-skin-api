@@ -24,6 +24,17 @@ TEST(parse_prefers_steam_provider) {
     CHECK_EQ(it->second.liquidity, 85);
 }
 
+TEST(parse_expands_bare_icon_hash) {
+    auto prices = parseSkinstrackItems(
+        R"({"items":[{"market_hash_name":"X","icon_url":"abc123","prices":[{"price":1,"provider":"steam"}]}]})");
+    CHECK_EQ(prices["X"].icon_url,
+             std::string("https://community.akamai.steamstatic.com/economy/image/abc123"));
+
+    auto full = parseSkinstrackItems(readFixture("skinstrack_items.json"));
+    CHECK_EQ(full["AK-47 | Redline (Field-Tested)"].icon_url,
+             std::string("https://community.akamai.steamstatic.com/economy/image/redline"));
+}
+
 TEST(parse_skips_items_without_usable_price) {
     auto prices = parseSkinstrackItems(readFixture("skinstrack_items.json"));
     CHECK_EQ(prices.size(), static_cast<size_t>(4));

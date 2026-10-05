@@ -62,6 +62,12 @@ static int entryCents(const json& entry) {
     return static_cast<int>(std::lround(usd * 100.0));
 }
 
+// SkinsTrack sends Steam's bare image hash; turn it into a full CDN URL.
+static std::string fullIconUrl(const std::string& icon) {
+    if (icon.empty() || icon.rfind("https://", 0) == 0) return icon;
+    return "https://community.akamai.steamstatic.com/economy/image/" + icon;
+}
+
 static void parseItems(const json& items, SkinstrackPriceMap& out) {
     if (!items.is_array()) return;
     for (const auto& item : items) {
@@ -87,7 +93,7 @@ static void parseItems(const json& items, SkinstrackPriceMap& out) {
         p.count       = intField(*chosen, "count");
         p.volume      = intField(*chosen, "volume");
         p.updated_at  = stringField(*chosen, "updated_at");
-        p.icon_url    = stringField(item, "icon_url");
+        p.icon_url    = fullIconUrl(stringField(item, "icon_url"));
         out[name]     = std::move(p);
     }
 }
