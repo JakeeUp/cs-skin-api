@@ -3,197 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#080A0D">
     <title>SkinAPI — CS2 Market</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <a class="skip-link" href="#main">Skip to content</a>
 
-    <!-- Top Navigation -->
     <header class="topbar">
         <div class="topbar-inner">
-            <div class="topbar-left">
-                <div class="logo">
-                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                        <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                        <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                    </svg>
-                    <span class="logo-text">SkinAPI</span>
-                </div>
-                <nav class="topnav">
-                    <button type="button" class="topnav-link active" data-page="market">Market</button>
-                    <button type="button" class="topnav-link" data-page="budget">Budget</button>
-                    <button type="button" class="topnav-link" data-page="loadout">Loadout</button>
-                </nav>
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg>
+                <span class="logo-text">SkinAPI</span>
             </div>
-            <div class="topbar-right">
-                <div class="search-inline">
-                    <svg class="search-icon" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.75" stroke="currentColor" stroke-width="1.5"/><path d="M13 13L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                    <select id="weaponSelect" class="weapon-select">
-                        <option value="">Select weapon...</option>
-                    </select>
-                    <button class="btn-search" id="searchBtn">Search</button>
-                </div>
-            </div>
+            <nav class="topnav" aria-label="Primary">
+                <button type="button" class="topnav-link active" data-page="market" aria-current="page">Market</button>
+                <button type="button" class="topnav-link" data-page="budget">Budget</button>
+                <button type="button" class="topnav-link" data-page="loadout">Loadout</button>
+            </nav>
+            <form class="search-inline" id="searchForm" role="search">
+                <label class="sr-only" for="weaponSelect">Weapon</label>
+                <select id="weaponSelect" class="weapon-select">
+                    <option value="">Select weapon...</option>
+                </select>
+                <button type="submit" class="btn-search" id="searchBtn">Search</button>
+            </form>
         </div>
     </header>
 
-    <!-- ─── MARKET PAGE ─────────────────────────────────────── -->
-    <div id="page-market" class="page active">
-        <div class="layout">
-            <aside class="sidebar">
-                <div class="sidebar-section">
-                    <div class="sidebar-title">Filters</div>
+    <main id="main">
+        <!-- MARKET -->
+        <section id="page-market" class="page active" aria-label="Market">
+            <div class="layout">
+                <details class="sidebar" id="filters" open>
+                    <summary class="sidebar-title">Filters</summary>
+                    <div class="sidebar-body">
+                        <div class="sidebar-section">
+                            <div class="sidebar-label" id="priceLabel">Price (USD)</div>
+                            <div class="price-row" role="group" aria-labelledby="priceLabel">
+                                <div class="price-field">
+                                    <span class="price-prefix">$</span>
+                                    <input type="number" id="minPrice" placeholder="Min" min="0" aria-label="Minimum price" />
+                                </div>
+                                <span class="price-sep" aria-hidden="true">–</span>
+                                <div class="price-field">
+                                    <span class="price-prefix">$</span>
+                                    <input type="number" id="maxPrice" placeholder="Max" min="0" aria-label="Maximum price" />
+                                </div>
+                            </div>
+                        </div>
+                        <fieldset class="sidebar-section">
+                            <legend class="sidebar-label">Wear</legend>
+                            <div class="wear-group">
+                                <label class="wear-chip fn"><input type="checkbox" value="Factory New"><span>FN</span></label>
+                                <label class="wear-chip mw"><input type="checkbox" value="Minimal Wear"><span>MW</span></label>
+                                <label class="wear-chip ft"><input type="checkbox" value="Field-Tested"><span>FT</span></label>
+                                <label class="wear-chip ww"><input type="checkbox" value="Well-Worn"><span>WW</span></label>
+                                <label class="wear-chip bs"><input type="checkbox" value="Battle-Scarred"><span>BS</span></label>
+                            </div>
+                        </fieldset>
+                        <div class="sidebar-section">
+                            <label class="toggle-row">
+                                <span class="sidebar-label">StatTrak™ only</span>
+                                <span class="toggle-wrap">
+                                    <input type="checkbox" id="stattrakOnly" class="toggle-input" role="switch">
+                                    <span class="toggle-track"></span>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="sidebar-actions">
+                            <button type="button" class="btn-apply" id="applyBtn">Apply</button>
+                            <button type="button" class="btn-reset" id="resetBtn">Reset</button>
+                        </div>
+                    </div>
+                </details>
+                <div class="results-panel">
+                    <div class="results-header">
+                        <span id="resultsCount" class="results-count" role="status" aria-live="polite"></span>
+                        <div class="results-tools">
+                            <label class="sort-label">
+                                <span>Sort</span>
+                                <select id="sortSelect" class="sort-select">
+                                    <option value="">Relevance</option>
+                                    <option value="price-asc">Price: low to high</option>
+                                    <option value="price-desc">Price: high to low</option>
+                                    <option value="name">Name</option>
+                                    <option value="listings">Listings</option>
+                                </select>
+                            </label>
+                            <div class="view-toggle" role="group" aria-label="Layout">
+                                <button type="button" class="view-btn active" id="viewGrid" aria-label="Grid view" aria-pressed="true">
+                                    <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                                </button>
+                                <button type="button" class="view-btn" id="viewList" aria-label="List view" aria-pressed="false">
+                                    <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="2" width="14" height="2.5" rx="1"/><rect x="1" y="6.75" width="14" height="2.5" rx="1"/><rect x="1" y="11.5" width="14" height="2.5" rx="1"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="searchResults" class="skin-grid" aria-live="polite"></div>
                 </div>
-                <div class="sidebar-section">
-                    <div class="sidebar-label">Price</div>
-                    <div class="price-row">
+            </div>
+        </section>
+
+        <!-- BUDGET -->
+        <section id="page-budget" class="page" aria-label="Budget optimizer">
+            <div class="budget-wrap">
+                <div class="budget-header">
+                    <h1>Budget Optimizer</h1>
+                    <p>Enter your budget and a weapon — we'll find the combination of skins that gets closest to your budget without going over.</p>
+                </div>
+                <div class="budget-form">
+                    <div class="budget-field">
+                        <label for="budgetInput">Budget (USD)</label>
                         <div class="price-field">
                             <span class="price-prefix">$</span>
-                            <input type="number" id="minPrice" placeholder="Min" />
+                            <input type="number" id="budgetInput" placeholder="e.g. 100" min="0" />
                         </div>
-                        <span class="price-sep">–</span>
+                    </div>
+                    <div class="budget-field budget-weapon">
+                        <label for="budgetWeapon">Weapon</label>
+                        <select id="budgetWeapon">
+                            <option value="">-- Select a Weapon --</option>
+                        </select>
+                    </div>
+                    <div class="budget-field budget-submit">
+                        <button type="button" class="btn-optimize" id="optimizeBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            Optimize
+                        </button>
+                    </div>
+                </div>
+                <div id="budgetSummary"></div>
+                <div id="budgetResults" class="skin-grid" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <!-- LOADOUT -->
+        <section id="page-loadout" class="page" aria-label="Loadout builder">
+            <div class="budget-wrap">
+                <div class="budget-header">
+                    <h1>Loadout Builder</h1>
+                    <p>Pick your side, set a budget for weapons, and optionally allocate separate budgets for a knife and gloves. We'll find the best options for each slot.</p>
+                </div>
+
+                <div class="side-selector" role="group" aria-label="Side">
+                    <button type="button" class="side-btn active" id="sideT" aria-pressed="true">
+                        <span class="side-label">T-Side</span>
+                        <span class="side-sub">AK-47 · Tec-9 · Glock-18</span>
+                    </button>
+                    <button type="button" class="side-btn" id="sideCT" aria-pressed="false">
+                        <span class="side-label">CT-Side</span>
+                        <span class="side-sub">M4A4 · M4A1-S · USP-S</span>
+                    </button>
+                </div>
+
+                <div class="budget-form loadout-form">
+                    <div class="budget-field">
+                        <label for="loadoutWeapons">Weapons Budget</label>
                         <div class="price-field">
                             <span class="price-prefix">$</span>
-                            <input type="number" id="maxPrice" placeholder="Max" />
+                            <input type="number" id="loadoutWeapons" placeholder="e.g. 100" min="0" />
                         </div>
+                        <span class="field-hint">Split between primary &amp; secondary</span>
                     </div>
-                </div>
-                <div class="sidebar-section">
-                    <div class="sidebar-label">Wear</div>
-                    <div class="wear-group">
-                        <label class="wear-chip fn"><input type="checkbox" value="Factory New"> <span>FN</span></label>
-                        <label class="wear-chip mw"><input type="checkbox" value="Minimal Wear"> <span>MW</span></label>
-                        <label class="wear-chip ft"><input type="checkbox" value="Field-Tested"> <span>FT</span></label>
-                        <label class="wear-chip ww"><input type="checkbox" value="Well-Worn"> <span>WW</span></label>
-                        <label class="wear-chip bs"><input type="checkbox" value="Battle-Scarred"> <span>BS</span></label>
-                    </div>
-                </div>
-                <div class="sidebar-section">
-                    <label class="toggle-row">
-                        <span class="sidebar-label" style="margin-bottom:0;">StatTrak™ Only</span>
-                        <div class="toggle-wrap">
-                            <input type="checkbox" id="stattrakOnly" class="toggle-input">
-                            <div class="toggle-track"></div>
+                    <div class="budget-field">
+                        <label for="loadoutKnife">Knife Budget <span class="optional-tag">Optional</span></label>
+                        <div class="price-field">
+                            <span class="price-prefix">$</span>
+                            <input type="number" id="loadoutKnife" placeholder="e.g. 50" min="0" />
                         </div>
-                    </label>
-                </div>
-                <div class="sidebar-actions">
-                    <button class="btn-apply" id="applyBtn">Apply</button>
-                    <button class="btn-reset" id="resetBtn">Reset</button>
-                </div>
-            </aside>
-            <main class="results-panel">
-                <div class="results-header">
-                    <span id="resultsCount" class="results-count"></span>
-                    <div class="view-toggle">
-                        <button class="view-btn active" id="viewGrid" title="Grid view" aria-label="Grid view">
-                            <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
-                        </button>
-                        <button class="view-btn" id="viewList" title="List view">
-                            <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><rect x="1" y="2" width="14" height="2.5" rx="1"/><rect x="1" y="6.75" width="14" height="2.5" rx="1"/><rect x="1" y="11.5" width="14" height="2.5" rx="1"/></svg>
+                        <span class="field-hint">Leave empty to skip</span>
+                    </div>
+                    <div class="budget-field">
+                        <label for="loadoutGloves">Gloves Budget <span class="optional-tag">Optional</span></label>
+                        <div class="price-field">
+                            <span class="price-prefix">$</span>
+                            <input type="number" id="loadoutGloves" placeholder="e.g. 30" min="0" />
+                        </div>
+                        <span class="field-hint">Leave empty to skip</span>
+                    </div>
+                    <div class="budget-field budget-submit">
+                        <div class="loadout-total" id="loadoutTotal">Total: $0.00</div>
+                        <button type="button" class="btn-optimize" id="buildBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            Build Loadout
                         </button>
                     </div>
                 </div>
-                <div id="searchResults" class="skin-grid"></div>
-            </main>
-        </div>
-    </div>
 
-    <!-- ─── BUDGET PAGE ─────────────────────────────────────── -->
-    <div id="page-budget" class="page">
-        <div class="budget-wrap">
-            <div class="budget-header">
-                <h1>Budget Optimizer</h1>
-                <p>Enter your budget and a weapon — we'll find the optimal combination of skins that maximizes your spending without going over budget.</p>
+                <div id="loadoutResults" aria-live="polite"></div>
             </div>
-            <div class="budget-form">
-                <div class="budget-field">
-                    <label>Budget (USD)</label>
-                    <div class="price-field">
-                        <span class="price-prefix">$</span>
-                        <input type="number" id="budgetInput" placeholder="e.g. 100" />
-                    </div>
-                </div>
-                <div class="budget-field budget-weapon">
-                    <label>Weapon</label>
-                    <select id="budgetWeapon">
-                        <option value="">-- Select a Weapon --</option>
-                    </select>
-                </div>
-                <div class="budget-field" style="align-self:flex-end;">
-                    <button class="btn-optimize" id="optimizeBtn">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                        Optimize
-                    </button>
-                </div>
-            </div>
-            <div id="budgetSummary"></div>
-            <div id="budgetResults" class="skin-grid"></div>
-        </div>
-    </div>
-
-    <!-- ─── LOADOUT PAGE ────────────────────────────────────── -->
-    <div id="page-loadout" class="page">
-        <div class="budget-wrap">
-            <div class="budget-header">
-                <h1>Loadout Builder</h1>
-                <p>Pick your side, set a budget for weapons, and optionally allocate separate budgets for a knife and gloves. We'll find the best options for each slot.</p>
-            </div>
-
-            <!-- Side Selector -->
-            <div class="side-selector">
-                <button class="side-btn active" id="sideT">
-                    <span class="side-label">T-Side</span>
-                    <span class="side-sub">AK-47 · Tec-9 · Glock-18</span>
-                </button>
-                <button class="side-btn" id="sideCT">
-                    <span class="side-label">CT-Side</span>
-                    <span class="side-sub">M4A4 · M4A1-S · USP-S</span>
-                </button>
-            </div>
-
-            <!-- Budget Inputs -->
-            <div class="budget-form loadout-form">
-                <div class="budget-field">
-                    <label>Weapons Budget</label>
-                    <div class="price-field">
-                        <span class="price-prefix">$</span>
-                        <input type="number" id="loadoutWeapons" placeholder="e.g. 100" />
-                    </div>
-                    <span class="field-hint">Split between primary & secondary</span>
-                </div>
-                <div class="budget-field">
-                    <label>Knife Budget <span class="optional-tag">Optional</span></label>
-                    <div class="price-field">
-                        <span class="price-prefix">$</span>
-                        <input type="number" id="loadoutKnife" placeholder="e.g. 50" />
-                    </div>
-                    <span class="field-hint">Leave empty to skip</span>
-                </div>
-                <div class="budget-field">
-                    <label>Gloves Budget <span class="optional-tag">Optional</span></label>
-                    <div class="price-field">
-                        <span class="price-prefix">$</span>
-                        <input type="number" id="loadoutGloves" placeholder="e.g. 30" />
-                    </div>
-                    <span class="field-hint">Leave empty to skip</span>
-                </div>
-                <div class="budget-field" style="align-self:flex-end;">
-                    <div class="loadout-total" id="loadoutTotal">Total: $0.00</div>
-                    <button class="btn-optimize" id="buildBtn">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                        Build Loadout
-                    </button>
-                </div>
-            </div>
-
-            <!-- Loadout Results -->
-            <div id="loadoutResults"></div>
-        </div>
-    </div>
+        </section>
+    </main>
 
     <script type="module" src="js/app.js"></script>
 </body>

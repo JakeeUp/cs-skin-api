@@ -2,7 +2,7 @@ import * as api from './api.js';
 import { getDemoSkins } from './demo-data.js';
 import {
     WEARS, WEAPON_GROUPS, getWear, getBaseName, isStatTrak, formatMoney,
-    normalizeSkin, filterSkins,
+    normalizeSkin, filterSkins, sortSkins, rarityColor,
 } from './lib.js';
 
 const $ = id => document.getElementById(id);
@@ -28,6 +28,15 @@ function h(tag, attrs = {}, ...children) {
         el.append(c.nodeType ? c : document.createTextNode(c));
     }
     return el;
+}
+
+function setLoading(container, count = 8) {
+    const card = () => h('div', { class: 'skin-card skeleton', 'aria-hidden': 'true' },
+        h('div', { class: 'sk-img' }), h('div', { class: 'sk-line' }),
+        h('div', { class: 'sk-line w60' }), h('div', { class: 'sk-line w40' }));
+    container.replaceChildren(
+        h('span', { class: 'sr-only', role: 'status' }, 'Loading…'),
+        ...Array.from({ length: count }, card));
 }
 
 function setMessage(container, text, cls = 'msg-error') {
@@ -67,6 +76,8 @@ function setView(mode) {
     $('searchResults').classList.toggle('list-mode', mode === 'list');
     $('viewGrid').classList.toggle('active', mode === 'grid');
     $('viewList').classList.toggle('active', mode === 'list');
+    $('viewGrid').setAttribute('aria-pressed', String(mode === 'grid'));
+    $('viewList').setAttribute('aria-pressed', String(mode === 'list'));
 }
 
 // ─── Rendering ─────────────────────────────────────────────
@@ -79,7 +90,8 @@ function wearBadge(wear) {
 function skinCard(skin) {
     const wear = getWear(skin.name);
     const baseName = getBaseName(skin.name);
-    return h('div', { class: 'skin-card' },
+    const color = rarityColor(skin.rarity);
+    return h('article', { class: 'skin-card', style: color && `--rarity:${color}` },
         h('a', {
             href: skin.marketUrl || '#', target: '_blank', rel: 'noopener noreferrer', class: 'skin-link',
         },
@@ -113,9 +125,8 @@ function currentFilters() {
 }
 
 function showFiltered(raw) {
-    const filtered = filterSkins(raw.map(normalizeSkin), currentFilters());
+    const filtered = sortSkins(filterSkins(raw.map(normalizeSkin), currentFilters()), $('sortSelect').value);
     $('resultsCount').textContent = `${filtered.length} listing${filtered.length !== 1 ? 's' : ''}`;
-    // filtered holds normalized skins; skinCard consumes those directly
     const grid = $('searchResults');
     if (filtered.length === 0) return setMessage(grid, 'No skins found.');
     grid.replaceChildren(...filtered.map(skinCard));
@@ -136,7 +147,7 @@ async function searchSkins() {
 
     if (!q) return setMessage(grid, 'Please select a weapon first.');
 
-    setMessage(grid, 'Fetching market data…', 'msg-loading');
+    setLoading(grid);
     $('resultsCount').textContent = '';
 
     const data = await tryApi(() => api.search(q, min, max), msg => setMessage(grid, msg));
@@ -188,7 +199,7 @@ async function optimizeBudget() {
 
     if (!budget || !query) return setMessage(results, 'Please enter a budget and select a weapon.');
 
-    setMessage(results, 'Running optimization…', 'msg-loading');
+    setLoading(results, 4);
     $('budgetSummary').replaceChildren();
 
     const data = await tryApi(() => api.optimizeBudget(budget, query), msg => setMessage(results, msg));
@@ -216,6 +227,8 @@ function setSide(side) {
     $('sideT').classList.toggle('t-active', side === 'T');
     $('sideCT').classList.toggle('active', side === 'CT');
     $('sideCT').classList.toggle('ct-active', side === 'CT');
+    $('sideT').setAttribute('aria-pressed', String(side === 'T'));
+    $('sideCT').setAttribute('aria-pressed', String(side === 'CT'));
 }
 
 const num = id => parseFloat($(id).value) || 0;
@@ -258,7 +271,7 @@ async function buildLoadout() {
     const results = $('loadoutResults');
 
     if (weapons <= 0) return setMessage(results, 'Please enter a weapons budget.');
-    setMessage(results, 'Building your loadout…', 'msg-loading');
+    setLoading(results, 4);
 
     const data = await tryApi(
         () => api.buildLoadout({ side: state.side, weapons_budget: weapons, knife_budget: knife, gloves_budget: gloves }),
@@ -289,7 +302,10 @@ function init() {
     fillWeaponSelect($('budgetWeapon'));
 
     document.querySelectorAll('.topnav-link').forEach(l => l.addEventListener('click', () => showPage(l.dataset.page)));
-    $('searchBtn').addEventListener('click', searchSkins);
+    $('searchForm').addEventListener('submit', e => { e.preventDefault(); searchSkins(); });
+    $('sortSelect').addEventListener('change', () => { if (state.skins.length) showFiltered(state.skins); });
+    // On narrow screens the filters start collapsed above the results.
+    if (matchMedia('(max-width: 900px)').matches) $('filters').open = false;
     $('applyBtn').addEventListener('click', searchSkins);
     $('resetBtn').addEventListener('click', clearFilters);
     $('viewGrid').addEventListener('click', () => setView('grid'));
