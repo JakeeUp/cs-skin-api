@@ -124,7 +124,7 @@ h1, h2, h3, .logo-text, .topnav-link, .slot-title, .side-label, .btn-search, .bt
 .topbar { position: sticky; top: 0; z-index: 50; background: #111; border-bottom: 5px solid #fafafa; }
 .topbar-inner {
     max-width: 1440px; margin: 0 auto; min-height: var(--topbar-h);
-    padding: 8px var(--gutter); display: flex; align-items: center; gap: 14px 22px; flex-wrap: wrap;
+    padding: 8px var(--gutter); display: flex; align-items: center; gap: 14px 16px; flex-wrap: wrap;
 }
 .logo {
     display: flex; align-items: center; gap: 8px; background: var(--accent); color: #111;
@@ -147,7 +147,7 @@ h1, h2, h3, .logo-text, .topnav-link, .slot-title, .side-label, .btn-search, .bt
 
 .search-inline { margin-left: auto; display: flex; align-items: stretch; background: #111; border: var(--bw) solid #fafafa; box-shadow: 4px 4px 0 var(--accent); }
 .search-inline:focus-within { border-color: var(--accent); }
-.weapon-select { background: #111; border: 0; padding: 8px 10px; min-width: 190px; color: #fafafa; }
+.weapon-select { background: #111; border: 0; padding: 8px 10px; min-width: 150px; color: #fafafa; }
 .weapon-select:focus-visible { outline-offset: -3px; }
 
 .btn-search, .btn-apply, .btn-optimize {
