@@ -38,7 +38,19 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { color-scheme: dark; }
+html {
+    color-scheme: dark;
+    scrollbar-color: var(--border-strong) var(--bg);
+    accent-color: var(--accent);
+}
+
+/* Browser surfaces carry the palette too. */
+::selection { background: var(--accent); color: var(--accent-ink); }
+input, textarea { caret-color: var(--accent); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
 
 body {
     background: var(--bg);
@@ -396,8 +408,13 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
     .results-tools { width: 100%; justify-content: space-between; }
 }
 
+/* Reduced motion removes movement but keeps color and opacity feedback. */
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; }
+    *, *::before, *::after {
+        animation: none !important;
+        transition-property: color, background-color, border-color, opacity !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 /* ─── SkinsTrack: card extras, chip, detail modal ───────── */
