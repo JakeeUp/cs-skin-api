@@ -27,6 +27,9 @@ SkinAPI is a REST API that pulls live CS2 skin pricing from the Steam Community 
 
 ## Features
 
+### Home: Trending Skins
+The landing page shows a continuously scrolling row of the most liquid skins on the market, plus a grid of premium picks over $100. Both come from the cached SkinsTrack snapshot, so they never spend API calls. The row pauses on hover or keyboard focus and becomes a still, swipeable row for visitors who prefer reduced motion.
+
 ### Market Search
 Search CS2 skins by weapon name with live Steam Market data. Filter results by price range, wear condition (FN/MW/FT/WW/BS), and StatTrak status. Toggle between grid and list views.
 
@@ -387,6 +390,30 @@ Lookup SkinsTrack price data for a skin.
 }
 ```
 </details>
+
+### `GET /skinstrack/trending`
+
+Most liquid skins from the cached SkinsTrack snapshot (no API calls spent). Ranked by liquidity, then offer count; stickers, charms, and cases are excluded, and only one wear/StatTrak variant per skin is kept.
+
+| Param | Default | Notes |
+|-------|---------|-------|
+| `limit` | 24 | 1–100 |
+| `min` | 1 | Minimum price in USD (0–10000) |
+
+**Status codes:** 200, 400 (bad `limit`/`min`), 503 (SkinsTrack data not loaded)
+
+```json
+{
+  "count": 1,
+  "items": [{
+    "name": "AK-47 | Redline (Field-Tested)",
+    "price_cents": 3488,
+    "icon_url": "https://community.akamai.steamstatic.com/economy/image/...",
+    "market_url": "https://steamcommunity.com/market/listings/730/...",
+    "skinstrack": { "price_cents": 3488, "liquidity": 85, "count": 1176, "volume": 0, "updated_at": "..." }
+  }]
+}
+```
 
 ---
 
