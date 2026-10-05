@@ -42,12 +42,14 @@ html.chaos-override .chaos-banner { filter: none; }
 /* Hover chaos: decorative only. */
 @media (prefers-reduced-motion: no-preference) {
     @keyframes chaos-jitter { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-2px, 1px) skewX(-2deg); } 50% { transform: translate(2px, -1px); } 75% { transform: translate(-1px, -2px) skewX(2deg); } }
-    .hl:hover, .btn-guilt:hover, #page-home h1:hover, #page-home h2:hover { animation: chaos-jitter .18s steps(2) infinite; }
-    .win-bar:hover { animation: chaos-jitter .25s steps(2) 3; }
+    .btn-guilt:hover { animation: chaos-jitter .18s steps(2) infinite; }
 }
+/* Decorative hovers are instant hard inverts: no transition, no skew. */
+.hl, .win-bar, #page-home h1, #page-home h2 { transition: none; }
 .hl:hover { background: var(--ink, #000); color: var(--yellow, #FFFF00); }
 .btn-guilt:hover { background: var(--ink, #000); color: var(--yellow, #FFFF00); }
 .win-bar:hover { filter: invert(1); }
+#page-home h1:hover, #page-home h2:hover { filter: invert(1); }
 @media (prefers-reduced-motion: reduce) {
-    .hl:hover, .btn-guilt:hover, #page-home h1:hover, #page-home h2:hover, .win-bar:hover { animation: none; transform: none; }
+    .btn-guilt:hover { animation: none; transform: none; }
 }
