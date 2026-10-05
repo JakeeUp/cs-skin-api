@@ -1,5 +1,5 @@
 # One executable per module; each is its own CTest test.
-set(SKIN_TESTS optimizer validation)
+set(SKIN_TESTS optimizer validation config)
 
 foreach(name IN LISTS SKIN_TESTS)
     add_executable(test_${name} test_${name}.cpp)
