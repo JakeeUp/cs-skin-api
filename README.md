@@ -274,7 +274,8 @@ cs-skin-api/
 │   └── main.cpp           # API server, knapsack algorithm, Steam fetcher
 ├── index.html              # Frontend UI
 ├── app.js                  # Client-side logic and API calls
-├── style.css               # Dark theme styling
+├── css/
+│   └── style.css           # Dark theme styling
 ├── CMakeLists.txt          # Build configuration
 ├── third_party/
 │   └── crow_all.h          # Crow HTTP framework (single header)
