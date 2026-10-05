@@ -1,3 +1,5 @@
+import { apiBlockedByBrowser } from './lib.js';
+
 // Backend calls. Network failures throw ApiUnavailable (caller falls back to
 // demo mode); non-2xx responses throw ApiError carrying the API's message.
 
@@ -18,7 +20,12 @@ function resolveBase() {
 
 export const API_BASE = resolveBase();
 
+// On a public host (e.g. GitHub Pages) a loopback API can't be reached, so
+// requests fail fast into demo mode instead of logging blocked fetches.
+const BLOCKED = typeof location !== 'undefined' && apiBlockedByBrowser(location.hostname, API_BASE);
+
 async function request(path, options, timeoutMs = 15000) {
+    if (BLOCKED) throw new ApiUnavailable('API not reachable from this host');
     let res;
     try {
         res = await fetch(API_BASE + path, { ...options, signal: AbortSignal.timeout(timeoutMs) });

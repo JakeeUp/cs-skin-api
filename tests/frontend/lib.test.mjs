@@ -2,8 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     getWear, getBaseName, isStatTrak, formatMoney, parsePriceText, normalizeSkin,
-    filterSkins, sortSkins, discountPct, rarityColor, timeAgo, clampPct, WEAPON_GROUPS,
-} from '../../js/lib.js';
+    filterSkins, sortSkins, discountPct, rarityColor, timeAgo, clampPct, WEAPON_GROUPS, apiBlockedByBrowser } from '../../js/lib.js';
 
 test('getWear finds wear names or empty string', () => {
     assert.equal(getWear('AK-47 | Redline (Field-Tested)'), 'Field-Tested');
@@ -120,4 +119,17 @@ test('clampPct', () => {
 test('weapon list has no duplicates', () => {
     const all = WEAPON_GROUPS.flatMap(([, w]) => w);
     assert.equal(new Set(all).size, all.length);
+});
+
+test('apiBlockedByBrowser: public page cannot reach a loopback API', () => {
+    assert.equal(apiBlockedByBrowser('jakeeup.github.io', 'http://127.0.0.1:8080'), true);
+    assert.equal(apiBlockedByBrowser('jakeeup.github.io', 'http://localhost:8080'), true);
+});
+
+test('apiBlockedByBrowser: local pages and remote APIs are allowed', () => {
+    assert.equal(apiBlockedByBrowser('127.0.0.1', 'http://127.0.0.1:8080'), false);
+    assert.equal(apiBlockedByBrowser('localhost', 'http://127.0.0.1:8080'), false);
+    assert.equal(apiBlockedByBrowser('', 'http://127.0.0.1:8080'), false);          // file://
+    assert.equal(apiBlockedByBrowser('jakeeup.github.io', 'https://api.example.com'), false);
+    assert.equal(apiBlockedByBrowser('jakeeup.github.io', 'not a url'), false);
 });

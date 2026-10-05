@@ -118,3 +118,17 @@ export function timeAgo(iso, now = Date.now()) {
 export function clampPct(n) {
     return Math.min(100, Math.max(0, Number(n) || 0));
 }
+
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+
+/**
+ * Browsers block a public page from calling a loopback address, so when the
+ * page isn't served locally and the API is on loopback, don't even try.
+ * Avoids a wall of CORS errors on the GitHub Pages demo.
+ */
+export function apiBlockedByBrowser(pageHostname, apiBase) {
+    let apiHost;
+    try { apiHost = new URL(apiBase).hostname; } catch { return false; }
+    const pageIsLocal = pageHostname === '' || LOOPBACK.has(pageHostname);
+    return LOOPBACK.has(apiHost) && !pageIsLocal;
+}
