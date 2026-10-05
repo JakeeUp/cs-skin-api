@@ -22,3 +22,6 @@ CMakeFiles/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code local state and agent worktrees
+.claude/
