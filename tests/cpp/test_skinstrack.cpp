@@ -74,6 +74,60 @@ TEST(format_iso_utc) {
     CHECK_EQ(formatIsoUtc(951782400), std::string("2000-02-29T00:00:00Z"));
 }
 
+// ─── rankTrending ──────────────────────────────────────────
+
+static SkinstrackPrice priced(int cents, int liquidity, int count) {
+    SkinstrackPrice p;
+    p.price_cents = cents;
+    p.liquidity   = liquidity;
+    p.count       = count;
+    return p;
+}
+
+TEST(trending_ranks_by_liquidity_then_offers) {
+    SkinstrackPriceMap m;
+    m["AK-47 | Slate (Field-Tested)"]     = priced(500, 90, 100);
+    m["AWP | Asiimov (Field-Tested)"]     = priced(9000, 95, 10);
+    m["M4A4 | Howl (Minimal Wear)"]       = priced(9000, 90, 500);
+    auto t = rankTrending(m, 10, 100);
+    CHECK_EQ(t.size(), static_cast<size_t>(3));
+    CHECK_EQ(t[0].name, std::string("AWP | Asiimov (Field-Tested)"));
+    CHECK_EQ(t[1].name, std::string("M4A4 | Howl (Minimal Wear)"));
+}
+
+TEST(trending_excludes_non_skins_and_cheap_items) {
+    SkinstrackPriceMap m;
+    m["Sticker | Crown (Foil)"]           = priced(50000, 100, 999);
+    m["Charm | Lil' Ava"]                 = priced(500, 100, 999);
+    m["Revolution Case"]                  = priced(500, 100, 999);
+    m["P250 | Sand Dune (Field-Tested)"]  = priced(5, 100, 999);
+    m["AK-47 | Redline (Field-Tested)"]   = priced(3488, 85, 1176);
+    auto t = rankTrending(m, 10, 100);
+    CHECK_EQ(t.size(), static_cast<size_t>(1));
+    CHECK_EQ(t[0].name, std::string("AK-47 | Redline (Field-Tested)"));
+}
+
+TEST(trending_keeps_one_variant_per_skin) {
+    SkinstrackPriceMap m;
+    m["AK-47 | Redline (Field-Tested)"]            = priced(3488, 85, 1176);
+    m["StatTrak™ AK-47 | Redline (Minimal Wear)"]  = priced(9000, 80, 50);
+    m["★ Karambit | Fade (Factory New)"]           = priced(200000, 70, 20);
+    m["★ StatTrak™ Karambit | Fade (Factory New)"] = priced(300000, 60, 5);
+    auto t = rankTrending(m, 10, 100);
+    CHECK_EQ(t.size(), static_cast<size_t>(2));
+    CHECK_EQ(t[0].name, std::string("AK-47 | Redline (Field-Tested)"));
+    CHECK_EQ(t[1].name, std::string("★ Karambit | Fade (Factory New)"));
+}
+
+TEST(trending_respects_limit) {
+    SkinstrackPriceMap m;
+    m["AK-47 | Slate (Field-Tested)"]  = priced(500, 90, 1);
+    m["AWP | Asiimov (Field-Tested)"]  = priced(500, 90, 2);
+    m["M4A4 | Howl (Minimal Wear)"]    = priced(500, 90, 3);
+    CHECK_EQ(rankTrending(m, 2, 100).size(), static_cast<size_t>(2));
+    CHECK(rankTrending(SkinstrackPriceMap{}, 5, 0).empty());
+}
+
 // ─── extractRarity ─────────────────────────────────────────
 
 TEST(rarity_from_steam_type) {

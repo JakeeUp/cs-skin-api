@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <sstream>
 
 using json = nlohmann::json;
@@ -212,6 +213,62 @@ std::optional<SkinstrackPrice> SkinstrackStore::find(const std::string& name) co
     auto it = prices->find(name);
     if (it == prices->end()) return std::nullopt;
     return it->second;
+}
+
+// ─── Trending ──────────────────────────────────────────────
+
+static bool startsWith(const std::string& s, const std::string& prefix) {
+    return s.compare(0, prefix.size(), prefix) == 0;
+}
+
+// "★ StatTrak™ Karambit | Fade (Factory New)" -> "Karambit | Fade"
+static std::string trendingBaseName(std::string name) {
+    for (const char* prefix : {"★ ", "StatTrak™ ", "Souvenir "})
+        if (startsWith(name, prefix)) name.erase(0, std::string(prefix).size());
+    if (!name.empty() && name.back() == ')') {
+        auto open = name.rfind(" (");
+        if (open != std::string::npos) name.erase(open);
+    }
+    return name;
+}
+
+static bool isTrendingCandidate(const std::string& name) {
+    if (name.find(" | ") == std::string::npos) return false;
+    for (const char* prefix : {"Sticker", "Patch", "Graffiti", "Sealed Graffiti", "Music Kit", "Charm"})
+        if (startsWith(name, prefix)) return false;
+    return true;
+}
+
+std::vector<TrendingSkin> rankTrending(const SkinstrackPriceMap& prices,
+                                       size_t limit, int min_cents) {
+    std::vector<TrendingSkin> candidates;
+    for (const auto& [name, price] : prices)
+        if (price.price_cents >= min_cents && isTrendingCandidate(name))
+            candidates.push_back({name, price});
+
+    std::sort(candidates.begin(), candidates.end(), [](const TrendingSkin& a, const TrendingSkin& b) {
+        if (a.price.liquidity != b.price.liquidity) return a.price.liquidity > b.price.liquidity;
+        if (a.price.count     != b.price.count)     return a.price.count     > b.price.count;
+        return a.name < b.name;  // deterministic order for equal scores
+    });
+
+    std::vector<TrendingSkin> result;
+    std::set<std::string>     seenBase;
+    for (auto& c : candidates) {
+        if (result.size() >= limit) break;
+        if (seenBase.insert(trendingBaseName(c.name)).second)
+            result.push_back(std::move(c));
+    }
+    return result;
+}
+
+std::vector<TrendingSkin> SkinstrackStore::trending(size_t limit, int min_cents) const {
+    std::shared_ptr<const SkinstrackPriceMap> prices;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        prices = prices_;
+    }
+    return rankTrending(*prices, limit, min_cents);
 }
 
 SkinstrackStatus SkinstrackStore::status() const {

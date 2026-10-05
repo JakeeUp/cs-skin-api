@@ -7,6 +7,7 @@
 #include "validation.hpp"
 #include <nlohmann/json.hpp>
 #include <climits>
+#include <cstdlib>
 #include <iostream>
 #include <set>
 #include <string>
@@ -241,6 +242,48 @@ int main() {
         r["volume"]      = p->volume;
         r["updated_at"]  = p->updated_at;
         r["icon_url"]    = p->icon_url;
+        return jsonResponse(200, r);
+    });
+
+    // GET /skinstrack/trending?limit=24&min=1
+    // Served from the cached snapshot, so it never spends SkinsTrack calls.
+    CROW_ROUTE(app, "/skinstrack/trending")([&skinstrack](const crow::request& req) {
+        int limit = 24;
+        if (const char* v = req.url_params.get("limit")) {
+            char* end = nullptr;
+            long l = std::strtol(v, &end, 10);
+            if (*v == '\0' || *end != '\0' || l < 1 || l > 100)
+                return jsonError(400, "limit must be between 1 and 100");
+            limit = static_cast<int>(l);
+        }
+        int min_cents = 100;
+        if (const char* v = req.url_params.get("min")) {
+            auto d = parseDollars(v);
+            if (!d) return jsonError(400, "min must be a dollar amount between 0 and 10000");
+            min_cents = toCents(*d);
+        }
+
+        if (skinstrack.status().items == 0)
+            return jsonError(503, "SkinsTrack data not loaded");
+
+        std::vector<crow::json::wvalue> items;
+        for (const auto& t : skinstrack.trending(static_cast<size_t>(limit), min_cents)) {
+            crow::json::wvalue o;
+            o["name"]        = t.name;
+            o["price_cents"] = t.price.price_cents;
+            o["icon_url"]    = t.price.icon_url;
+            o["market_url"]  = "https://steamcommunity.com/market/listings/730/" + urlEncode(t.name);
+            o["skinstrack"]["price_cents"] = t.price.price_cents;
+            o["skinstrack"]["liquidity"]   = t.price.liquidity;
+            o["skinstrack"]["count"]       = t.price.count;
+            o["skinstrack"]["volume"]      = t.price.volume;
+            o["skinstrack"]["updated_at"]  = t.price.updated_at;
+            items.push_back(std::move(o));
+        }
+
+        crow::json::wvalue r;
+        r["count"] = static_cast<int>(items.size());
+        r["items"] = std::move(items);
         return jsonResponse(200, r);
     });
 

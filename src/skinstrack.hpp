@@ -5,6 +5,7 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <vector>
 #include <thread>
 #include <unordered_map>
 
@@ -49,6 +50,19 @@ std::string serializeSkinstrackSnapshot(const SkinstrackSnapshot& snapshot);
 // Formats epoch seconds as ISO-8601 UTC, e.g. "2025-11-25T10:30:00Z".
 std::string formatIsoUtc(long long epoch_seconds);
 
+struct TrendingSkin {
+    std::string     name;
+    SkinstrackPrice price;
+};
+
+// Most liquid skins priced at least `min_cents`, best first. The free plan
+// reports no sales volume, so ties on liquidity fall back to offer count.
+// Stickers, patches, graffiti, music kits, and charms are excluded, and
+// only the best wear/StatTrak variant of each skin is kept so the list
+// shows variety.
+std::vector<TrendingSkin> rankTrending(const SkinstrackPriceMap& prices,
+                                       size_t limit, int min_cents);
+
 // ─── Price store ───────────────────────────────────────────
 
 struct SkinstrackStatus {
@@ -78,6 +92,7 @@ public:
 
     std::optional<SkinstrackPrice> find(const std::string& market_hash_name) const;
     SkinstrackStatus               status() const;
+    std::vector<TrendingSkin>      trending(size_t limit, int min_cents) const;
 
 private:
     enum class FetchResult { Ok, Unauthorized, HoldOff, Failed };
