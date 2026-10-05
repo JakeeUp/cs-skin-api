@@ -214,6 +214,11 @@ function init() {
     setInterval(tickCountdown, 1000);
     scheduleCounter();
     setInterval(popupTick, 2000);
+    // Close a popup the moment Home is hidden, not on the next tick, so it
+    // never shows over the Market, Budget, or Loadout tools.
+    const home = $('#page-home');
+    if (home) new MutationObserver(() => { if (popEl && !homeActive()) closePopup(); })
+        .observe(home, { attributes: true, attributeFilter: ['class'] });
 
     $('#checkoutTrapBtn')?.addEventListener('click', (e) => openTrap(e.currentTarget));
 
