@@ -23,9 +23,9 @@
                     <span class="logo-text">SkinAPI</span>
                 </div>
                 <nav class="topnav">
-                    <a class="topnav-link active" onclick="showPage('market')">Market</a>
-                    <a class="topnav-link" onclick="showPage('budget')">Budget</a>
-                    <a class="topnav-link" onclick="showPage('loadout')">Loadout</a>
+                    <button type="button" class="topnav-link active" data-page="market">Market</button>
+                    <button type="button" class="topnav-link" data-page="budget">Budget</button>
+                    <button type="button" class="topnav-link" data-page="loadout">Loadout</button>
                 </nav>
             </div>
             <div class="topbar-right">
@@ -33,47 +33,8 @@
                     <svg class="search-icon" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.75" stroke="currentColor" stroke-width="1.5"/><path d="M13 13L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                     <select id="weaponSelect" class="weapon-select">
                         <option value="">Select weapon...</option>
-                        <optgroup label="RIFLES">
-                            <option value="AK-47">AK-47</option><option value="M4A4">M4A4</option><option value="M4A1-S">M4A1-S</option>
-                            <option value="AUG">AUG</option><option value="SG 553">SG 553</option><option value="FAMAS">FAMAS</option>
-                            <option value="Galil AR">Galil AR</option><option value="AWP">AWP</option><option value="SSG 08">SSG 08</option>
-                            <option value="SCAR-20">SCAR-20</option><option value="G3SG1">G3SG1</option>
-                        </optgroup>
-                        <optgroup label="PISTOLS">
-                            <option value="Desert Eagle">Desert Eagle</option><option value="Glock-18">Glock-18</option>
-                            <option value="USP-S">USP-S</option><option value="P2000">P2000</option><option value="P250">P250</option>
-                            <option value="Five-SeveN">Five-SeveN</option><option value="Tec-9">Tec-9</option>
-                            <option value="CZ75-Auto">CZ75-Auto</option><option value="Dual Berettas">Dual Berettas</option>
-                            <option value="R8 Revolver">R8 Revolver</option>
-                        </optgroup>
-                        <optgroup label="SMGS">
-                            <option value="MP9">MP9</option><option value="MAC-10">MAC-10</option><option value="MP7">MP7</option>
-                            <option value="MP5-SD">MP5-SD</option><option value="UMP-45">UMP-45</option><option value="P90">P90</option>
-                            <option value="PP-Bizon">PP-Bizon</option>
-                        </optgroup>
-                        <optgroup label="HEAVY">
-                            <option value="Nova">Nova</option><option value="XM1014">XM1014</option><option value="Sawed-Off">Sawed-Off</option>
-                            <option value="MAG-7">MAG-7</option><option value="M249">M249</option><option value="Negev">Negev</option>
-                        </optgroup>
-                        <optgroup label="KNIVES">
-                            <option value="Karambit">Karambit</option><option value="Bayonet">Bayonet</option>
-                            <option value="Butterfly Knife">Butterfly Knife</option><option value="Flip Knife">Flip Knife</option>
-                            <option value="Gut Knife">Gut Knife</option><option value="Huntsman Knife">Huntsman Knife</option>
-                            <option value="Falchion Knife">Falchion Knife</option><option value="Shadow Daggers">Shadow Daggers</option>
-                            <option value="Bowie Knife">Bowie Knife</option><option value="Ursus Knife">Ursus Knife</option>
-                            <option value="Navaja Knife">Navaja Knife</option><option value="Stiletto Knife">Stiletto Knife</option>
-                            <option value="Talon Knife">Talon Knife</option><option value="Classic Knife">Classic Knife</option>
-                            <option value="Paracord Knife">Paracord Knife</option><option value="Survival Knife">Survival Knife</option>
-                            <option value="Nomad Knife">Nomad Knife</option><option value="Skeleton Knife">Skeleton Knife</option>
-                        </optgroup>
-                        <optgroup label="GLOVES">
-                            <option value="Sport Gloves">Sport Gloves</option><option value="Driver Gloves">Driver Gloves</option>
-                            <option value="Hand Wraps">Hand Wraps</option><option value="Moto Gloves">Moto Gloves</option>
-                            <option value="Specialist Gloves">Specialist Gloves</option><option value="Hydra Gloves">Hydra Gloves</option>
-                            <option value="Bloodhound Gloves">Bloodhound Gloves</option><option value="Broken Fang Gloves">Broken Fang Gloves</option>
-                        </optgroup>
                     </select>
-                    <button class="btn-search" onclick="searchSkins()">Search</button>
+                    <button class="btn-search" id="searchBtn">Search</button>
                 </div>
             </div>
         </div>
@@ -120,18 +81,18 @@
                     </label>
                 </div>
                 <div class="sidebar-actions">
-                    <button class="btn-apply" onclick="searchSkins()">Apply</button>
-                    <button class="btn-reset" onclick="clearFilters()">Reset</button>
+                    <button class="btn-apply" id="applyBtn">Apply</button>
+                    <button class="btn-reset" id="resetBtn">Reset</button>
                 </div>
             </aside>
             <main class="results-panel">
                 <div class="results-header">
                     <span id="resultsCount" class="results-count"></span>
                     <div class="view-toggle">
-                        <button class="view-btn active" id="viewGrid" onclick="setView('grid')" title="Grid view">
+                        <button class="view-btn active" id="viewGrid" title="Grid view" aria-label="Grid view">
                             <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
                         </button>
-                        <button class="view-btn" id="viewList" onclick="setView('list')" title="List view">
+                        <button class="view-btn" id="viewList" title="List view">
                             <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><rect x="1" y="2" width="14" height="2.5" rx="1"/><rect x="1" y="6.75" width="14" height="2.5" rx="1"/><rect x="1" y="11.5" width="14" height="2.5" rx="1"/></svg>
                         </button>
                     </div>
@@ -160,49 +121,10 @@
                     <label>Weapon</label>
                     <select id="budgetWeapon">
                         <option value="">-- Select a Weapon --</option>
-                        <optgroup label="RIFLES">
-                            <option value="AK-47">AK-47</option><option value="M4A4">M4A4</option><option value="M4A1-S">M4A1-S</option>
-                            <option value="AUG">AUG</option><option value="SG 553">SG 553</option><option value="FAMAS">FAMAS</option>
-                            <option value="Galil AR">Galil AR</option><option value="AWP">AWP</option><option value="SSG 08">SSG 08</option>
-                            <option value="SCAR-20">SCAR-20</option><option value="G3SG1">G3SG1</option>
-                        </optgroup>
-                        <optgroup label="PISTOLS">
-                            <option value="Desert Eagle">Desert Eagle</option><option value="Glock-18">Glock-18</option>
-                            <option value="USP-S">USP-S</option><option value="P2000">P2000</option><option value="P250">P250</option>
-                            <option value="Five-SeveN">Five-SeveN</option><option value="Tec-9">Tec-9</option>
-                            <option value="CZ75-Auto">CZ75-Auto</option><option value="Dual Berettas">Dual Berettas</option>
-                            <option value="R8 Revolver">R8 Revolver</option>
-                        </optgroup>
-                        <optgroup label="SMGS">
-                            <option value="MP9">MP9</option><option value="MAC-10">MAC-10</option><option value="MP7">MP7</option>
-                            <option value="MP5-SD">MP5-SD</option><option value="UMP-45">UMP-45</option><option value="P90">P90</option>
-                            <option value="PP-Bizon">PP-Bizon</option>
-                        </optgroup>
-                        <optgroup label="HEAVY">
-                            <option value="Nova">Nova</option><option value="XM1014">XM1014</option><option value="Sawed-Off">Sawed-Off</option>
-                            <option value="MAG-7">MAG-7</option><option value="M249">M249</option><option value="Negev">Negev</option>
-                        </optgroup>
-                        <optgroup label="KNIVES">
-                            <option value="Karambit">Karambit</option><option value="Bayonet">Bayonet</option>
-                            <option value="Butterfly Knife">Butterfly Knife</option><option value="Flip Knife">Flip Knife</option>
-                            <option value="Gut Knife">Gut Knife</option><option value="Huntsman Knife">Huntsman Knife</option>
-                            <option value="Falchion Knife">Falchion Knife</option><option value="Shadow Daggers">Shadow Daggers</option>
-                            <option value="Bowie Knife">Bowie Knife</option><option value="Ursus Knife">Ursus Knife</option>
-                            <option value="Navaja Knife">Navaja Knife</option><option value="Stiletto Knife">Stiletto Knife</option>
-                            <option value="Talon Knife">Talon Knife</option><option value="Classic Knife">Classic Knife</option>
-                            <option value="Paracord Knife">Paracord Knife</option><option value="Survival Knife">Survival Knife</option>
-                            <option value="Nomad Knife">Nomad Knife</option><option value="Skeleton Knife">Skeleton Knife</option>
-                        </optgroup>
-                        <optgroup label="GLOVES">
-                            <option value="Sport Gloves">Sport Gloves</option><option value="Driver Gloves">Driver Gloves</option>
-                            <option value="Hand Wraps">Hand Wraps</option><option value="Moto Gloves">Moto Gloves</option>
-                            <option value="Specialist Gloves">Specialist Gloves</option><option value="Hydra Gloves">Hydra Gloves</option>
-                            <option value="Bloodhound Gloves">Bloodhound Gloves</option><option value="Broken Fang Gloves">Broken Fang Gloves</option>
-                        </optgroup>
                     </select>
                 </div>
                 <div class="budget-field" style="align-self:flex-end;">
-                    <button class="btn-optimize" onclick="optimizeBudget()">
+                    <button class="btn-optimize" id="optimizeBtn">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                         Optimize
                     </button>
@@ -223,11 +145,11 @@
 
             <!-- Side Selector -->
             <div class="side-selector">
-                <button class="side-btn active" id="sideT" onclick="setSide('T')">
+                <button class="side-btn active" id="sideT">
                     <span class="side-label">T-Side</span>
                     <span class="side-sub">AK-47 · Tec-9 · Glock-18</span>
                 </button>
-                <button class="side-btn" id="sideCT" onclick="setSide('CT')">
+                <button class="side-btn" id="sideCT">
                     <span class="side-label">CT-Side</span>
                     <span class="side-sub">M4A4 · M4A1-S · USP-S</span>
                 </button>
@@ -239,7 +161,7 @@
                     <label>Weapons Budget</label>
                     <div class="price-field">
                         <span class="price-prefix">$</span>
-                        <input type="number" id="loadoutWeapons" placeholder="e.g. 100" oninput="updateLoadoutTotal()" />
+                        <input type="number" id="loadoutWeapons" placeholder="e.g. 100" />
                     </div>
                     <span class="field-hint">Split between primary & secondary</span>
                 </div>
@@ -247,7 +169,7 @@
                     <label>Knife Budget <span class="optional-tag">Optional</span></label>
                     <div class="price-field">
                         <span class="price-prefix">$</span>
-                        <input type="number" id="loadoutKnife" placeholder="e.g. 50" oninput="updateLoadoutTotal()" />
+                        <input type="number" id="loadoutKnife" placeholder="e.g. 50" />
                     </div>
                     <span class="field-hint">Leave empty to skip</span>
                 </div>
@@ -255,13 +177,13 @@
                     <label>Gloves Budget <span class="optional-tag">Optional</span></label>
                     <div class="price-field">
                         <span class="price-prefix">$</span>
-                        <input type="number" id="loadoutGloves" placeholder="e.g. 30" oninput="updateLoadoutTotal()" />
+                        <input type="number" id="loadoutGloves" placeholder="e.g. 30" />
                     </div>
                     <span class="field-hint">Leave empty to skip</span>
                 </div>
                 <div class="budget-field" style="align-self:flex-end;">
                     <div class="loadout-total" id="loadoutTotal">Total: $0.00</div>
-                    <button class="btn-optimize" onclick="buildLoadout()">
+                    <button class="btn-optimize" id="buildBtn">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                         Build Loadout
                     </button>
@@ -273,7 +195,6 @@
         </div>
     </div>
 
-    <script src="js/demo-data.js"></script>
-    <script src="js/app.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>

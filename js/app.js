@@ -1,430 +1,315 @@
-const API = 'http://127.0.0.1:8080';
+import * as api from './api.js';
+import { getDemoSkins } from './demo-data.js';
+import {
+    WEARS, WEAPON_GROUPS, getWear, getBaseName, isStatTrak, formatMoney,
+    normalizeSkin, filterSkins,
+} from './lib.js';
 
-let currentView   = 'grid';
-let allResults    = [];
-let selectedSide  = 'T';
-let demoMode      = false;
+const $ = id => document.getElementById(id);
 
-// ─── Demo Mode ────────────────────────────────────────────
+const state = {
+    side: 'T',
+    demoMode: false,
+    skins: [],
+};
+
+// ─── DOM helper ────────────────────────────────────────────
+// Builds elements with textContent only, so no HTML escaping is needed.
+
+function h(tag, attrs = {}, ...children) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+        if (v === false || v == null) continue;
+        if (k === 'class') el.className = v;
+        else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const c of children.flat()) {
+        if (c == null || c === false) continue;
+        el.append(c.nodeType ? c : document.createTextNode(c));
+    }
+    return el;
+}
+
+function setMessage(container, text, cls = 'msg-error') {
+    container.replaceChildren(h('div', { class: cls }, text));
+}
+
+// ─── Demo mode ─────────────────────────────────────────────
 // When the backend isn't reachable (e.g. GitHub Pages), the UI
 // populates with sample data so visitors can explore the interface.
 
-async function checkServerAvailable() {
+function enterDemoMode() {
+    if (state.demoMode) return;
+    state.demoMode = true;
+    document.body.prepend(h('div', { id: 'demoBanner' },
+        'DEMO MODE — Viewing sample data. Run the C++ backend locally for live Steam Market results.'));
+}
+
+/** Run an API call; on network failure switch to demo mode and return null. */
+async function tryApi(call, onError) {
     try {
-        const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(2000) });
-        return res.ok;
-    } catch { return false; }
+        return await call();
+    } catch (e) {
+        if (e instanceof api.ApiError) { onError(e.message); return undefined; }
+        enterDemoMode();
+        return null;
+    }
 }
 
-function showDemoBanner() {
-    if (document.getElementById('demoBanner')) return;
-    const banner = document.createElement('div');
-    banner.id = 'demoBanner';
-    banner.innerHTML = 'DEMO MODE — Viewing sample data. Run the C++ backend locally for live Steam Market results.';
-    document.body.prepend(banner);
-}
-
-// ─── Page Navigation ───────────────────────────────────────
+// ─── Page navigation / view toggle ─────────────────────────
 
 function showPage(id) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.topnav-link').forEach(l => l.classList.remove('active'));
-    document.getElementById('page-' + id).classList.add('active');
-    document.querySelector(`.topnav-link[onclick="showPage('${id}')"]`).classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + id));
+    document.querySelectorAll('.topnav-link').forEach(l => l.classList.toggle('active', l.dataset.page === id));
 }
-
-// ─── View Toggle ───────────────────────────────────────────
 
 function setView(mode) {
-    currentView = mode;
-    const grid = document.getElementById('searchResults');
-    grid.classList.toggle('list-mode', mode === 'list');
-    document.getElementById('viewGrid').classList.toggle('active', mode === 'grid');
-    document.getElementById('viewList').classList.toggle('active', mode === 'list');
+    $('searchResults').classList.toggle('list-mode', mode === 'list');
+    $('viewGrid').classList.toggle('active', mode === 'grid');
+    $('viewList').classList.toggle('active', mode === 'list');
 }
 
-// ─── Helpers ───────────────────────────────────────────────
+// ─── Rendering ─────────────────────────────────────────────
 
-function escapeHTML(str) {
-    const el = document.createElement('span');
-    el.textContent = str;
-    return el.innerHTML;
+function wearBadge(wear) {
+    const info = WEARS[wear];
+    return info ? h('span', { class: `skin-wear-badge wear-${info.key}` }, info.label) : null;
 }
 
-const WEAR_MAP = {
-    'Factory New':    { key: 'fn', label: 'FN' },
-    'Minimal Wear':   { key: 'mw', label: 'MW' },
-    'Field-Tested':   { key: 'ft', label: 'FT' },
-    'Well-Worn':      { key: 'ww', label: 'WW' },
-    'Battle-Scarred': { key: 'bs', label: 'BS' },
-};
-
-function getWear(name) {
-    for (const wear of Object.keys(WEAR_MAP)) {
-        if (name.includes(wear)) return wear;
-    }
-    return '';
+function skinCard(skin) {
+    const wear = getWear(skin.name);
+    const baseName = getBaseName(skin.name);
+    return h('div', { class: 'skin-card' },
+        h('a', {
+            href: skin.marketUrl || '#', target: '_blank', rel: 'noopener noreferrer', class: 'skin-link',
+        },
+            h('div', { class: 'skin-img-wrap' },
+                isStatTrak(skin.name) && h('div', { class: 'st-badge' }, 'StatTrak™'),
+                skin.iconUrl
+                    ? h('img', { src: skin.iconUrl, alt: baseName, loading: 'lazy' })
+                    : h('div', { class: 'skin-img-placeholder' }, '◈')),
+            h('div', { class: 'skin-body' },
+                h('div', { class: 'skin-wear-row' },
+                    wearBadge(wear),
+                    h('span', { class: 'skin-listings-badge' }, `${skin.listings} listings`)),
+                h('div', { class: 'skin-name' }, baseName),
+                h('div', { class: 'skin-price-row' },
+                    h('span', { class: 'skin-price' }, formatMoney(skin.cents)),
+                    h('span', { class: 'btn-buy' }, 'View →')))));
 }
 
-function getBaseName(name) {
-    return name
-        .replace(/\s*\(Factory New\)|\s*\(Minimal Wear\)|\s*\(Field-Tested\)|\s*\(Well-Worn\)|\s*\(Battle-Scarred\)/g, '')
-        .replace(/^StatTrak™\s*/, '');
+function renderSkins(rawSkins, container) {
+    if (!rawSkins || rawSkins.length === 0) return setMessage(container, 'No skins found.');
+    container.replaceChildren(...rawSkins.map(s => skinCard(normalizeSkin(s))));
 }
 
-function wearBadgeHTML(wear) {
-    const info = WEAR_MAP[wear];
-    if (!info) return '';
-    return `<span class="skin-wear-badge wear-${info.key}">${info.label}</span>`;
+// ─── Market search ─────────────────────────────────────────
+
+function currentFilters() {
+    return {
+        wears: [...document.querySelectorAll('.wear-chip input:checked')].map(c => c.value),
+        stattrakOnly: $('stattrakOnly').checked,
+    };
 }
 
-function skinCardHTML(name, priceText, listings, isStatTrak = false, iconUrl = '', marketUrl = '') {
-    const wear     = getWear(name);
-    const baseName = escapeHTML(getBaseName(name));
-    const safePrice = escapeHTML(priceText);
-    const safeUrl  = marketUrl && marketUrl.startsWith('https://') ? marketUrl : '#';
-    return `
-        <div class="skin-card">
-            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="skin-link">
-                <div class="skin-img-wrap">
-                    ${isStatTrak ? `<div class="st-badge">StatTrak\u2122</div>` : ''}
-                    ${iconUrl
-                        ? `<img src="${escapeHTML(iconUrl)}" alt="${baseName}" loading="lazy" />`
-                        : `<div class="skin-img-placeholder">\u25C8</div>`}
-                </div>
-                <div class="skin-body">
-                    <div class="skin-wear-row">
-                        ${wearBadgeHTML(wear)}
-                        <span class="skin-listings-badge">${Number(listings)} listings</span>
-                    </div>
-                    <div class="skin-name">${baseName}</div>
-                    <div class="skin-price-row">
-                        <span class="skin-price">${safePrice}</span>
-                        <span class="btn-buy">View \u2192</span>
-                    </div>
-                </div>
-            </a>
-        </div>
-    `;
+function showFiltered(raw) {
+    const filtered = filterSkins(raw.map(normalizeSkin), currentFilters());
+    $('resultsCount').textContent = `${filtered.length} listing${filtered.length !== 1 ? 's' : ''}`;
+    // filtered holds normalized skins; skinCard consumes those directly
+    const grid = $('searchResults');
+    if (filtered.length === 0) return setMessage(grid, 'No skins found.');
+    grid.replaceChildren(...filtered.map(skinCard));
 }
-
-function renderResults(results, containerId) {
-    const div = document.getElementById(containerId);
-    if (!results || results.length === 0) {
-        div.innerHTML = '<div class="msg-error">No skins found.</div>';
-        return;
-    }
-    div.innerHTML = results.map(skin => {
-        const isStatTrak = skin.name.includes('StatTrak');
-        return skinCardHTML(
-            skin.name,
-            skin.sell_price_text || skin.price,
-            skin.sell_listings   || skin.listings,
-            isStatTrak,
-            skin.icon_url,
-            skin.market_url
-        );
-    }).join('');
-}
-
-// ─── Market Search ─────────────────────────────────────────
 
 function clearFilters() {
-    document.getElementById('minPrice').value = '';
-    document.getElementById('maxPrice').value = '';
-    document.querySelectorAll('.wear-chip input').forEach(c => c.checked = false);
-    document.getElementById('stattrakOnly').checked = false;
+    $('minPrice').value = '';
+    $('maxPrice').value = '';
+    document.querySelectorAll('.wear-chip input').forEach(c => { c.checked = false; });
+    $('stattrakOnly').checked = false;
 }
 
 async function searchSkins() {
-    const q        = document.getElementById('weaponSelect').value;
-    const minPrice = document.getElementById('minPrice').value || 0;
-    const maxPrice = document.getElementById('maxPrice').value || 999999;
-    const resultsDiv = document.getElementById('searchResults');
-    const countDiv   = document.getElementById('resultsCount');
+    const q = $('weaponSelect').value;
+    const min = $('minPrice').value || 0;
+    const max = $('maxPrice').value || 999999;
+    const grid = $('searchResults');
 
-    if (!q) {
-        resultsDiv.innerHTML = '<div class="msg-error">Please select a weapon first.</div>';
-        return;
-    }
+    if (!q) return setMessage(grid, 'Please select a weapon first.');
 
-    resultsDiv.innerHTML = '<div class="msg-loading">Fetching market data\u2026</div>';
-    countDiv.textContent = '';
+    setMessage(grid, 'Fetching market data…', 'msg-loading');
+    $('resultsCount').textContent = '';
 
-    try {
-        const res  = await fetch(`${API}/search?q=${encodeURIComponent(q)}&min=${minPrice}&max=${maxPrice}`);
-        const data = await res.json();
-
+    const data = await tryApi(() => api.search(q, min, max), msg => setMessage(grid, msg));
+    if (data === undefined) return;
+    if (data === null) {
+        state.skins = getDemoSkins(q);
+    } else {
         if (!data.results || data.results.length === 0) {
-            resultsDiv.innerHTML = '<div class="msg-error">No skins found in that price range.</div>';
-            return;
+            return setMessage(grid, 'No skins found in that price range.');
         }
-
-        allResults = data.results;
-
-        const checkedWears = [...document.querySelectorAll('.wear-chip input:checked')].map(c => c.value);
-        const stattrakOnly = document.getElementById('stattrakOnly').checked;
-        let filtered = allResults;
-
-        if (checkedWears.length > 0) {
-            filtered = filtered.filter(s => checkedWears.includes(getWear(s.name)));
-        }
-        if (stattrakOnly) {
-            filtered = filtered.filter(s => s.name.includes('StatTrak'));
-        }
-
-        countDiv.textContent = `${filtered.length} listing${filtered.length !== 1 ? 's' : ''}`;
-        renderResults(filtered, 'searchResults');
-
-    } catch (e) {
-        if (!demoMode) {
-            demoMode = true;
-            showDemoBanner();
-        }
-        // Fall back to demo data
-        const weapon = q || 'AK-47';
-        allResults = getDemoSkins(weapon);
-
-        const checkedWears = [...document.querySelectorAll('.wear-chip input:checked')].map(c => c.value);
-        const stattrakOnly = document.getElementById('stattrakOnly').checked;
-        let filtered = allResults;
-        if (checkedWears.length > 0)
-            filtered = filtered.filter(s => checkedWears.includes(getWear(s.name)));
-        if (stattrakOnly)
-            filtered = filtered.filter(s => s.name.includes('StatTrak'));
-
-        countDiv.textContent = `${filtered.length} listing${filtered.length !== 1 ? 's' : ''}`;
-        renderResults(filtered, 'searchResults');
+        state.skins = data.results;
     }
+    showFiltered(state.skins);
 }
 
-// ─── Budget Optimizer ──────────────────────────────────────
+// ─── Budget optimizer ──────────────────────────────────────
+
+function summaryCard(label, value, positive = false) {
+    return h('div', { class: 'summary-card' },
+        h('div', { class: 'summary-label' }, label),
+        h('div', { class: 'summary-value' + (positive ? ' positive' : '') }, value));
+}
+
+function renderSummary({ budget, spent, remaining, selected, found }) {
+    $('budgetSummary').replaceChildren(h('div', { class: 'budget-summary' },
+        summaryCard('Budget', formatMoney(budget * 100)),
+        summaryCard('Total Spent', formatMoney(spent * 100), true),
+        summaryCard('Remaining', formatMoney(remaining * 100)),
+        summaryCard('Selected', `${selected} of ${found}`)));
+}
+
+/** Greedy knapsack over demo data (stand-in for the backend optimizer). */
+function demoOptimize(budget, weapon) {
+    const skins = getDemoSkins(weapon || 'AK-47');
+    const sorted = skins.map(normalizeSkin).sort((a, b) => b.cents - a.cents);
+    let remaining = Math.round(budget * 100);
+    const selected = [];
+    for (const s of sorted) {
+        if (s.cents <= remaining) { selected.push(s); remaining -= s.cents; }
+    }
+    const spent = (Math.round(budget * 100) - remaining) / 100;
+    return { selected, spent, found: skins.length };
+}
 
 async function optimizeBudget() {
-    const budget     = parseFloat(document.getElementById('budgetInput').value);
-    const query      = document.getElementById('budgetWeapon').value;
-    const resultsDiv = document.getElementById('budgetResults');
-    const summaryDiv = document.getElementById('budgetSummary');
+    const budget = parseFloat($('budgetInput').value);
+    const query = $('budgetWeapon').value;
+    const results = $('budgetResults');
 
-    if (!budget || !query) {
-        resultsDiv.innerHTML = '<div class="msg-error">Please enter a budget and select a weapon.</div>';
+    if (!budget || !query) return setMessage(results, 'Please enter a budget and select a weapon.');
+
+    setMessage(results, 'Running optimization…', 'msg-loading');
+    $('budgetSummary').replaceChildren();
+
+    const data = await tryApi(() => api.optimizeBudget(budget, query), msg => setMessage(results, msg));
+    if (data === undefined) return;
+
+    if (data === null) {
+        const d = demoOptimize(budget, query);
+        renderSummary({ budget, spent: d.spent, remaining: budget - d.spent, selected: d.selected.length, found: d.found });
+        results.replaceChildren(...d.selected.map(skinCard));
         return;
     }
-
-    resultsDiv.innerHTML = '<div class="msg-loading">Running optimization\u2026</div>';
-    summaryDiv.innerHTML = '';
-
-    try {
-        const res  = await fetch(`${API}/budget/optimize`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ budget, query })
-        });
-        const data = await res.json();
-
-        if (data.error) {
-            resultsDiv.innerHTML = `<div class="msg-error">${escapeHTML(data.error)}</div>`;
-            return;
-        }
-
-        if (!data.skins || data.skins.length === 0) {
-            resultsDiv.innerHTML = '<div class="msg-error">No skins found within budget.</div>';
-            return;
-        }
-
-        summaryDiv.innerHTML = `
-            <div class="budget-summary">
-                <div class="summary-card">
-                    <div class="summary-label">Budget</div>
-                    <div class="summary-value">$${data.budget.toFixed(2)}</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-label">Total Spent</div>
-                    <div class="summary-value positive">$${data.total_spent.toFixed(2)}</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-label">Remaining</div>
-                    <div class="summary-value">$${data.remaining.toFixed(2)}</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-label">Selected</div>
-                    <div class="summary-value">${data.skins_selected} of ${data.skins_found}</div>
-                </div>
-            </div>
-        `;
-
-        renderResults(data.skins, 'budgetResults');
-
-    } catch (e) {
-        if (!demoMode) {
-            demoMode = true;
-            showDemoBanner();
-        }
-        // Demo budget optimizer — simulate knapsack on mock data
-        const weapon = query || 'AK-47';
-        const mockSkins = getDemoSkins(weapon);
-        const parseCents = s => Math.round(parseFloat(s.sell_price_text.replace(/[$,]/g, '')) * 100);
-
-        // Greedy knapsack on demo data
-        const sorted = [...mockSkins].sort((a, b) => parseCents(b) - parseCents(a));
-        const budgetCents = Math.round(budget * 100);
-        let remaining = budgetCents;
-        const selected = [];
-        for (const s of sorted) {
-            const c = parseCents(s);
-            if (c <= remaining) { selected.push(s); remaining -= c; }
-        }
-        const totalSpent = (budgetCents - remaining) / 100;
-
-        summaryDiv.innerHTML = `
-            <div class="budget-summary">
-                <div class="summary-card"><div class="summary-label">Budget</div><div class="summary-value">$${budget.toFixed(2)}</div></div>
-                <div class="summary-card"><div class="summary-label">Total Spent</div><div class="summary-value positive">$${totalSpent.toFixed(2)}</div></div>
-                <div class="summary-card"><div class="summary-label">Remaining</div><div class="summary-value">$${(budget - totalSpent).toFixed(2)}</div></div>
-                <div class="summary-card"><div class="summary-label">Selected</div><div class="summary-value">${selected.length} of ${mockSkins.length}</div></div>
-            </div>`;
-        renderResults(selected, 'budgetResults');
-    }
+    if (!data.skins || data.skins.length === 0) return setMessage(results, 'No skins found within budget.');
+    renderSummary({
+        budget: data.budget, spent: data.total_spent, remaining: data.remaining,
+        selected: data.skins_selected, found: data.skins_found,
+    });
+    renderSkins(data.skins, results);
 }
 
-// ─── Loadout Builder ───────────────────────────────────────
+// ─── Loadout builder ───────────────────────────────────────
 
 function setSide(side) {
-    selectedSide = side;
-    document.getElementById('sideT').classList.remove('active', 't-active');
-    document.getElementById('sideCT').classList.remove('active', 'ct-active');
-    if (side === 'T') {
-        document.getElementById('sideT').classList.add('active', 't-active');
-    } else {
-        document.getElementById('sideCT').classList.add('active', 'ct-active');
-    }
+    state.side = side;
+    $('sideT').classList.toggle('active', side === 'T');
+    $('sideT').classList.toggle('t-active', side === 'T');
+    $('sideCT').classList.toggle('active', side === 'CT');
+    $('sideCT').classList.toggle('ct-active', side === 'CT');
 }
+
+const num = id => parseFloat($(id).value) || 0;
 
 function updateLoadoutTotal() {
-    const w = parseFloat(document.getElementById('loadoutWeapons').value) || 0;
-    const k = parseFloat(document.getElementById('loadoutKnife').value)   || 0;
-    const g = parseFloat(document.getElementById('loadoutGloves').value)  || 0;
-    const total = w + k + g;
-    document.getElementById('loadoutTotal').textContent = `Total: $${total.toFixed(2)}`;
+    const total = num('loadoutWeapons') + num('loadoutKnife') + num('loadoutGloves');
+    $('loadoutTotal').textContent = `Total: ${formatMoney(total * 100)}`;
 }
 
-function slotSectionHTML(slotKey, slotLabel, slotIcon, budgetLabel, skins) {
-    const iconClass = slotKey;
-    const optionsHTML = skins.map(skin => {
-        const isStatTrak = skin.name.includes('StatTrak');
-        return skinCardHTML(skin.name, skin.price, skin.listings, isStatTrak, skin.icon_url, skin.market_url);
-    }).join('');
+function slotSection(slotKey, label, icon, budget, skins) {
+    return h('div', { class: 'slot-section' },
+        h('div', { class: 'slot-header' },
+            h('div', { class: `slot-icon ${slotKey}` }, icon),
+            h('div', { class: 'slot-title' }, label),
+            h('div', { class: 'slot-budget-tag' }, `Budget: ${formatMoney(budget * 100)}`)),
+        h('div', { class: 'slot-options skin-grid' },
+            skins.length ? skins.map(s => skinCard(normalizeSkin(s)))
+                : h('div', { class: 'msg-error' }, 'No options found in this range.')));
+}
 
-    return `
-        <div class="slot-section">
-            <div class="slot-header">
-                <div class="slot-icon ${iconClass}">${slotIcon}</div>
-                <div class="slot-title">${escapeHTML(slotLabel)}</div>
-                <div class="slot-budget-tag">Budget: ${escapeHTML(budgetLabel)}</div>
-            </div>
-            <div class="slot-options skin-grid">
-                ${optionsHTML || '<div class="msg-error">No options found in this range.</div>'}
-            </div>
-        </div>
-    `;
+const SLOT_LABELS = {
+    T:  { primary: 'Primary — AK-47 / SG 553 / Galil AR', secondary: 'Secondary — Glock-18 / Tec-9 / Deagle' },
+    CT: { primary: 'Primary — M4A4 / M4A1-S / AUG', secondary: 'Secondary — USP-S / P2000 / Five-SeveN' },
+};
+const GUN = '🔫';
+
+function demoSlots(side, knifeBudget, glovesBudget) {
+    const slots = side === 'T'
+        ? { primary: getDemoSkins('AK-47').slice(0, 3), secondary: getDemoSkins('Glock-18') }
+        : { primary: getDemoSkins('M4A4'), secondary: getDemoSkins('USP-S') };
+    if (knifeBudget > 0) slots.knife = getDemoSkins('Karambit');
+    if (glovesBudget > 0) slots.gloves = [];
+    return slots;
 }
 
 async function buildLoadout() {
-    const weapons_budget = parseFloat(document.getElementById('loadoutWeapons').value) || 0;
-    const knife_budget   = parseFloat(document.getElementById('loadoutKnife').value)   || 0;
-    const gloves_budget  = parseFloat(document.getElementById('loadoutGloves').value)  || 0;
-    const resultsDiv     = document.getElementById('loadoutResults');
+    const weapons = num('loadoutWeapons');
+    const knife = num('loadoutKnife');
+    const gloves = num('loadoutGloves');
+    const results = $('loadoutResults');
 
-    if (weapons_budget <= 0) {
-        resultsDiv.innerHTML = '<div class="msg-error">Please enter a weapons budget.</div>';
-        return;
-    }
+    if (weapons <= 0) return setMessage(results, 'Please enter a weapons budget.');
+    setMessage(results, 'Building your loadout…', 'msg-loading');
 
-    resultsDiv.innerHTML = '<div class="msg-loading">Building your loadout\u2026</div>';
+    const data = await tryApi(
+        () => api.buildLoadout({ side: state.side, weapons_budget: weapons, knife_budget: knife, gloves_budget: gloves }),
+        msg => setMessage(results, msg));
+    if (data === undefined) return;
 
-    try {
-        const res  = await fetch(`${API}/loadout/build`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                side: selectedSide,
-                weapons_budget,
-                knife_budget,
-                gloves_budget
-            })
-        });
-        const data = await res.json();
+    const slots = data === null ? demoSlots(state.side, knife, gloves) : data.slots;
+    const per = weapons / 2;
+    const labels = SLOT_LABELS[state.side];
+    const sections = [];
+    if (slots.primary)   sections.push(slotSection('primary', labels.primary, GUN, per, slots.primary));
+    if (slots.secondary) sections.push(slotSection('secondary', labels.secondary, GUN, per, slots.secondary));
+    if (slots.knife)     sections.push(slotSection('knife', 'Knife', '🔪', knife, slots.knife));
+    if (slots.gloves)    sections.push(slotSection('gloves', 'Gloves', '🧤', gloves, slots.gloves));
+    results.replaceChildren(h('div', { class: 'loadout-slots' }, sections));
+}
 
-        if (data.error) {
-            resultsDiv.innerHTML = `<div class="msg-error">${escapeHTML(data.error)}</div>`;
-            return;
-        }
+// ─── Init ──────────────────────────────────────────────────
 
-        const slots      = data.slots;
-        const perWeapon  = (weapons_budget / 2).toFixed(2);
-        let html = '<div class="loadout-slots">';
-
-        if (slots.primary) {
-            const label = selectedSide === 'T' ? 'Primary \u2014 AK-47 / SG 553 / Galil AR' : 'Primary \u2014 M4A4 / M4A1-S / AUG';
-            html += slotSectionHTML('primary', label, '\uD83D\uDD2B', `$${perWeapon}`, slots.primary);
-        }
-
-        if (slots.secondary) {
-            const label = selectedSide === 'T' ? 'Secondary \u2014 Glock-18 / Tec-9 / Deagle' : 'Secondary \u2014 USP-S / P2000 / Five-SeveN';
-            html += slotSectionHTML('secondary', label, '\uD83D\uDD2B', `$${perWeapon}`, slots.secondary);
-        }
-
-        if (slots.knife) {
-            html += slotSectionHTML('knife', 'Knife', '\uD83D\uDD2A', `$${knife_budget.toFixed(2)}`, slots.knife);
-        }
-
-        if (slots.gloves) {
-            html += slotSectionHTML('gloves', 'Gloves', '\uD83E\uDDE4', `$${gloves_budget.toFixed(2)}`, slots.gloves);
-        }
-
-        html += '</div>';
-        resultsDiv.innerHTML = html;
-
-    } catch (e) {
-        if (!demoMode) {
-            demoMode = true;
-            showDemoBanner();
-        }
-        // Demo loadout builder
-        const perWeapon = weapons_budget / 2;
-        let html = '<div class="loadout-slots">';
-
-        if (selectedSide === 'T') {
-            html += slotSectionHTML('primary',   'Primary \u2014 AK-47 / SG 553 / Galil AR',    '\uD83D\uDD2B', `$${perWeapon.toFixed(2)}`, getDemoSkins('AK-47').slice(0, 3));
-            html += slotSectionHTML('secondary', 'Secondary \u2014 Glock-18 / Tec-9 / Deagle',  '\uD83D\uDD2B', `$${perWeapon.toFixed(2)}`, getDemoSkins('Glock-18'));
-        } else {
-            html += slotSectionHTML('primary',   'Primary \u2014 M4A4 / M4A1-S / AUG',          '\uD83D\uDD2B', `$${perWeapon.toFixed(2)}`, getDemoSkins('M4A4'));
-            html += slotSectionHTML('secondary', 'Secondary \u2014 USP-S / P2000 / Five-SeveN', '\uD83D\uDD2B', `$${perWeapon.toFixed(2)}`, getDemoSkins('USP-S'));
-        }
-
-        if (knife_budget > 0)
-            html += slotSectionHTML('knife', 'Knife', '\uD83D\uDD2A', `$${knife_budget.toFixed(2)}`, getDemoSkins('Karambit'));
-        if (gloves_budget > 0)
-            html += slotSectionHTML('gloves', 'Gloves', '\uD83E\uDDE4', `$${gloves_budget.toFixed(2)}`, []);
-
-        html += '</div>';
-        resultsDiv.innerHTML = html;
+function fillWeaponSelect(select) {
+    for (const [group, weapons] of WEAPON_GROUPS) {
+        select.append(h('optgroup', { label: group }, weapons.map(w => h('option', { value: w }, w))));
     }
 }
 
-// Init
-document.addEventListener('DOMContentLoaded', async () => {
-    document.getElementById('sideT').classList.add('active', 't-active');
+function init() {
+    fillWeaponSelect($('weaponSelect'));
+    fillWeaponSelect($('budgetWeapon'));
 
-    // Check if backend is available; if not, enter demo mode and show default skins
-    const serverUp = await checkServerAvailable();
-    if (!serverUp) {
-        demoMode = true;
-        showDemoBanner();
-        // Auto-populate market page with AK-47 demo skins
-        document.getElementById('weaponSelect').value = 'AK-47';
-        allResults = getDemoSkins('AK-47');
-        document.getElementById('resultsCount').textContent = `${allResults.length} listings`;
-        renderResults(allResults, 'searchResults');
-    }
-});
+    document.querySelectorAll('.topnav-link').forEach(l => l.addEventListener('click', () => showPage(l.dataset.page)));
+    $('searchBtn').addEventListener('click', searchSkins);
+    $('applyBtn').addEventListener('click', searchSkins);
+    $('resetBtn').addEventListener('click', clearFilters);
+    $('viewGrid').addEventListener('click', () => setView('grid'));
+    $('viewList').addEventListener('click', () => setView('list'));
+    $('optimizeBtn').addEventListener('click', optimizeBudget);
+    $('buildBtn').addEventListener('click', buildLoadout);
+    $('sideT').addEventListener('click', () => setSide('T'));
+    $('sideCT').addEventListener('click', () => setSide('CT'));
+    ['loadoutWeapons', 'loadoutKnife', 'loadoutGloves'].forEach(id => $(id).addEventListener('input', updateLoadoutTotal));
+
+    setSide('T');
+
+    api.isServerUp().then(up => {
+        if (up) return;
+        enterDemoMode();
+        $('weaponSelect').value = 'AK-47';
+        state.skins = getDemoSkins('AK-47');
+        showFiltered(state.skins);
+    });
+}
+
+// Modules are deferred, so the DOM is parsed by now.
+init();

@@ -1,11 +1,10 @@
 // Sample data shown in demo mode when the backend isn't reachable
-// (e.g. on GitHub Pages). Loaded as a classic script before app.js,
-// so these declarations are shared via global scope.
+// (e.g. on GitHub Pages). ES module imported by app.js.
 
 const STEAM_IMG = 'https://community.akamai.steamstatic.com/economy/image/';
 const STEAM_MKT = 'https://steamcommunity.com/market/listings/730/';
 
-const DEMO_SKINS = {
+export const DEMO_SKINS = {
     'AK-47': [
         { name: 'AK-47 | Redline (Field-Tested)',         sell_price_text: '$48.23',  sell_listings: 803,  icon_url: STEAM_IMG + 'i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiFO0POlPPNSI_-RHGavzOtyufRkASq2lkxx4W-HnNyqJC3FZwYoC5p0Q7FfthW6wdWxPu-371Pdit5HnyXgznQeHYY5wyA', market_url: STEAM_MKT + 'AK-47%20%7C%20Redline%20%28Field-Tested%29' },
         { name: 'AK-47 | Asiimov (Field-Tested)',         sell_price_text: '$38.91',  sell_listings: 412,  icon_url: STEAM_IMG + 'i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiFO0POlPPNSIeOaB2qf19F7teVgWiT9x01x623cmd2rcXKQbw4oA8dzReEK5EK6kNO2NOO04FeIjYJCmyr4jzQJsHiu1I77Gg', market_url: STEAM_MKT + 'AK-47%20%7C%20Asiimov%20%28Field-Tested%29' },
@@ -46,6 +45,6 @@ const DEMO_SKINS = {
 // Fallback skins when a weapon isn't in the demo set
 const DEMO_DEFAULT = DEMO_SKINS['AK-47'];
 
-function getDemoSkins(weapon) {
+export function getDemoSkins(weapon) {
     return DEMO_SKINS[weapon] || DEMO_DEFAULT;
 }
