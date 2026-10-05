@@ -1,0 +1,10 @@
+[
+  {
+    "market_hash_name": "M4A1-S | Printstream (Minimal Wear)",
+    "icon_url": "https://community.akamai.steamstatic.com/economy/image/printstream",
+    "liquidity": 70,
+    "prices": [
+      {"price": 210.4, "count": 55, "volume": 120, "provider": "steam", "updated_at": "2025-11-25T08:00:00Z"}
+    ]
+  }
+]

@@ -18,6 +18,7 @@ add_library(skin_core STATIC
     src/config.cpp
     src/http_client.cpp
     src/optimizer.cpp
+    src/skinstrack.cpp
     src/steam_market.cpp
     src/validation.cpp
 )

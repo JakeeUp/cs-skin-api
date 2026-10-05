@@ -1,0 +1,50 @@
+{
+  "__WARNING__": "Free plan: data may be delayed. Upgrade for real-time prices.",
+  "currency": "USD",
+  "items": [
+    {
+      "market_hash_name": "AK-47 | Redline (Field-Tested)",
+      "slug": "ak-47-redline-field-tested",
+      "icon_url": "https://community.akamai.steamstatic.com/economy/image/redline",
+      "type": "Skin",
+      "liquidity": 85,
+      "prices": [
+        {"price": 11.20, "count": 40, "volume": 90, "provider": "buff163", "updated_at": "2025-11-25T09:00:00Z", "meta": {}},
+        {"price": 10.75, "count": 150, "volume": 500, "provider": "steam", "updated_at": "2025-11-25T10:30:00Z", "meta": {"buy_order": 9.1}}
+      ]
+    },
+    {
+      "market_hash_name": "AK-47 | Slate (Field-Tested)",
+      "slug": "ak-47-slate-field-tested",
+      "icon_url": "https://community.akamai.steamstatic.com/economy/image/slate",
+      "type": "Skin",
+      "liquidity": 97.6,
+      "prices": [
+        {"price": 3.01, "count": 2400, "volume": 8100, "provider": "skinport", "updated_at": "2025-11-25T10:00:00Z"}
+      ]
+    },
+    {
+      "market_hash_name": "AWP | Dragon Lore (Factory New)",
+      "icon_url": "https://community.akamai.steamstatic.com/economy/image/dlore",
+      "liquidity": 12,
+      "prices": [
+        {"price": "not-a-number", "provider": "steam"},
+        {"price": 14999.99, "count": 1, "provider": "csfloat", "updated_at": "2025-11-24T22:15:00Z"}
+      ]
+    },
+    {
+      "market_hash_name": "Glock-18 | Fade (Factory New)",
+      "liquidity": "high",
+      "prices": [
+        {"price": 1520.5, "count": null, "volume": -3, "provider": "steam"}
+      ]
+    },
+    {"market_hash_name": "No Prices Case", "prices": []},
+    {"market_hash_name": "Garbage Prices", "prices": "oops"},
+    {"market_hash_name": "Zero Price", "prices": [{"price": 0, "provider": "steam"}]},
+    {"slug": "missing-name", "prices": [{"price": 1.0, "provider": "steam"}]},
+    "not an object",
+    42
+  ],
+  "__WARNING_2__": "Do not redistribute."
+}
