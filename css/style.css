@@ -1,39 +1,42 @@
-/* SkinAPI — dark amber design system */
+/* SkinAPI Corp: brutalist chaos world. Black, white, one yellow. */
 
 :root {
-    --bg: #080A0D;
-    --surface: #0F1217;
-    --surface-2: #161B22;
-    --surface-3: #1D232C;
-    --border: #232A33;
-    --border-strong: #323B47;
-    --text: #E8EAED;
-    --text-2: #9BA4AF;
-    --text-3: #6A7482;
-    --accent: #F59E0B;
-    --accent-hover: #FBB63B;
-    --accent-ink: #1A1100;
-    --accent-soft: rgba(245, 158, 11, 0.12);
-    --success: #22C55E;
-    --success-soft: rgba(34, 197, 94, 0.14);
-    --danger: #EF4444;
-    --danger-soft: rgba(239, 68, 68, 0.14);
+    --bg: #000;
+    --surface: #000;
+    --surface-2: #151515;
+    --surface-3: #262626;
+    --border: #fff;
+    --border-strong: #fff;
+    --text: #fff;
+    --text-2: #e0e0e0;
+    --text-3: #b8b8b8;
+    --accent: #FFFF00;
+    --accent-hover: #fff;
+    --accent-ink: #000;
+    --accent-soft: rgba(255, 255, 0, 0.14);
+    --success: #4ADE80;
+    --success-soft: rgba(74, 222, 128, 0.14);
+    --danger: #FF5C5C;
+    --danger-soft: rgba(255, 92, 92, 0.14);
 
+    /* Functional data colors, kept as-is on skin cards. */
     --wear-fn: #22C55E;
     --wear-mw: #84CC16;
     --wear-ft: #F59E0B;
     --wear-ww: #FB923C;
-    --wear-bs: #EF4444;
+    --wear-bs: #FF5C5C;
 
-    --font-ui: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
-    --font-display: 'Chakra Petch', 'Barlow', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    --font-ui: 'Space Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    --font-display: 'Anton', Impact, 'Arial Narrow Bold', sans-serif;
+    --font-mono: 'Space Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
-    --radius-sm: 6px;
-    --radius: 10px;
-    --radius-lg: 14px;
+    --radius-sm: 0;
+    --radius: 0;
+    --radius-lg: 0;
     --gutter: 24px;
     --topbar-h: 60px;
+    --bw: 3px;
+    --shadow: 6px 6px 0 var(--accent);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -56,11 +59,11 @@ body {
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-ui);
-    font-size: 15px;
-    line-height: 1.5;
+    font-size: 14px;
+    line-height: 1.55;
     min-height: 100vh;
     overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
+    
 }
 
 button, input, select { font: inherit; color: inherit; }
