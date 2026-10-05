@@ -38,6 +38,19 @@ Guidance from [pbakaus/impeccable](https://github.com/pbakaus/impeccable)
 | Reduced motion means less motion, not none | Movement is removed; color and opacity feedback remain |
 | No eyebrow labels above headings | The Home hero heading stands on its own |
 
+## Reference pass
+
+Ideas only; no code or assets were copied.
+
+| Reference | What they do | What we did |
+|---|---|---|
+| Bloomberg / Berghain ([brainy.ink](https://brainy.ink/paper/brutalist-web-design-2026)) | Type sized to the viewport, tight leading, text running into the screen edge | Home headline uses a `vw` clamp at 0.8 leading and bleeds off the right edge; overflow is clipped on the hero only, never the page |
+| Balenciaga ([SuperDesign brutalism](https://superdesign.dev/styles/brutalism)) | Stark white product tiles with nothing but image, name and price | `#premiumGrid` tiles are white with an oversized Space Mono price; hover inverts; still opens the detail modal |
+| Drudge / Craigslist | Dense columns of plain default-blue links on a flat page | Home "WHAT'S MOVING": all-caps trending skins, each a real Steam link in `#0000EE` (visited `#551A8B`) on a `#fafafa` panel |
+| MSCHF ([Wikipedia](https://en.wikipedia.org/wiki/MSCHF)) | Products framed as numbered drops | A small catalogue number ("№ 001") on each premium tile, and nothing else |
+| Cards Against Humanity 99% Sale ([One Page Love](https://onepagelove.com/cards-against-humanity-99-sale)) | A deadpan joke store that commits to the bit | Satire stays on Home (fake tracker, countdown, offer); Market, Budget and Loadout stay honest and usable |
+| brainy.ink failure rules | One accent in a few intentional places; off-black on off-white; real body size; no all-caps paragraphs | Yellow only on the headline highlighter, primary buttons and ticker tape; text is `#111` on `#fafafa` or the reverse; body is 16px; tool hover is an instant invert with 3px focus outlines |
+
 ## Chaos world (SkinAPI Corp)
 
 The look was deliberately replaced with a brutalist, "unauthorized" world: black/white plus one yellow (`#FFFF00`), Anton display type against Space Mono, thick borders, hard offset shadows, title-barred `.win` boxes, default link underlines, and `.hl`/`mark` highlighter blocks. This supersedes the earlier amber/Chakra Petch decisions above.
