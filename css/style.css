@@ -76,7 +76,7 @@ a:hover { background: var(--accent); color: #111; }
 /* Accent discipline: yellow lives in three places only: headline highlighter, primary buttons, ticker tape. */
 mark, .hl { background: #fafafa; color: #111; padding: 0 0.15em; }
 /* The one yellow highlighter: the Home headline. */
-.mega mark { background: var(--yellow); color: #111; padding: 0 0.08em; }
+.mega mark { background: var(--yellow); color: #111; padding: 0 0.08em; display: inline-block; line-height: 0.86; } /* inline-block keeps the block inside its own line instead of painting over the line above */
 
 h1, h2, h3, .logo-text, .topnav-link, .slot-title, .side-label, .btn-search, .btn-apply,
 .btn-optimize, .modal h2, .win-bar { font-family: var(--font-display); font-weight: 400; text-transform: uppercase; letter-spacing: 0.02em; }
