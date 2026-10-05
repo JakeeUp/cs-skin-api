@@ -254,6 +254,25 @@ function renderSkins(rawSkins, container) {
 
 // ─── Home: trending ticker + premium picks ─────────────────
 
+// Stark product tile: image, name, oversized price, and a small catalogue number.
+function premiumTile(skin, n) {
+    const tile = h('button', {
+        type: 'button', class: 'prem-tile',
+        'aria-label': `${skin.name}, ${formatMoney(skin.cents)}. Open details`,
+    },
+        h('span', { class: 'prem-no' }, `№ ${String(n).padStart(3, '0')}`),
+        skin.iconUrl ? h('img', { src: skin.iconUrl, alt: '', loading: 'lazy' }) : h('span', { class: 'prem-img-empty' }),
+        h('span', { class: 'prem-name' }, getBaseName(skin.name)),
+        h('span', { class: 'prem-price' }, formatMoney(skin.cents)));
+    tile.addEventListener('click', () => openDetail(skin, tile));
+    return tile;
+}
+
+function renderPremium(rawSkins, container) {
+    if (!rawSkins || rawSkins.length === 0) return setMessage(container, 'No skins found.');
+    container.replaceChildren(...rawSkins.map((s, i) => premiumTile(normalizeSkin(s), i + 1)));
+}
+
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
 // "★ Karambit | Fade" -> weapon line above the finish name.
@@ -322,12 +341,12 @@ async function loadHome() {
     if (state.demoMode) {
         const demo = demoTrending();
         renderTicker(demo.trending);
-        return renderSkins(demo.premium, grid);
+        return renderPremium(demo.premium, grid);
     }
     try {
         const [hot, premium] = await Promise.all([api.trending(20, 1), api.trending(8, 100)]);
         renderTicker(hot.items);
-        renderSkins(premium.items, grid);
+        renderPremium(premium.items, grid);
     } catch (e) {
         $('trendTicker').hidden = true;
         setMessage(grid, e instanceof api.ApiError

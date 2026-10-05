@@ -403,6 +403,17 @@ button.skin-card:focus-visible { outline-offset: 4px; }
 .win-about h2 { font-size: 34px; line-height: 1; margin-bottom: 10px; }
 .win-about p { margin-bottom: 10px; max-width: 70ch; }
 
+/* Premium picks: stark white tiles, huge mono price, nothing else. */
+.premium-grid { gap: 3px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); background: #fafafa; border: 3px solid #fafafa; }
+.prem-tile { position: relative; display: grid; gap: 10px; align-content: start; width: 100%; text-align: left; background: #fafafa; color: #111; border: 0; padding: 36px 18px 20px; }
+.prem-tile:hover { background: #111; color: #fafafa; }
+.prem-tile:focus-visible { outline: 3px solid #111; outline-offset: -6px; }
+.prem-tile:hover:focus-visible { outline-color: #fafafa; }
+.prem-no { position: absolute; top: 10px; left: 12px; font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
+.prem-tile img, .prem-img-empty { width: 100%; height: 150px; object-fit: contain; }
+.prem-name { font-weight: 700; font-size: 16px; line-height: 1.3; min-height: 2.6em; overflow-wrap: anywhere; }
+.prem-price { font-family: var(--font-mono); font-weight: 700; font-size: clamp(28px, 3.4vw, 40px); line-height: 1; letter-spacing: -0.04em; }
+
 /* Trending tape: a hard yellow strip with a label block. */
 .tape { display: flex; align-items: stretch; border-top: 5px solid #fafafa; border-bottom: 5px solid #fafafa; background: var(--yellow); color: #111; margin-top: 8px; }
 .tape-label { flex: none; background: #111; color: var(--yellow); padding: 8px 14px; font-family: var(--font-display); font-size: 22px; line-height: 1; text-transform: uppercase; display: grid; align-content: center; gap: 4px; border-right: 5px solid #fafafa; z-index: 1; }
