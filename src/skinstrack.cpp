@@ -311,7 +311,10 @@ SkinstrackStore::FetchResult SkinstrackStore::fetchOnce(std::string& error) {
     std::cerr << "[skinstrack] Fetching item list" << std::endl;
 
     // The key goes only in a header: httpGet logs URLs on failure.
-    HttpResponse r = httpGet(SKINSTRACK_ITEMS_URL, {"X-API-KEY: " + api_key_},
+    // SkinsTrack's Cloudflare front answers 403 to the browser-style
+    // User-Agent that Steam needs, so identify as a plain API client here.
+    HttpResponse r = httpGet(SKINSTRACK_ITEMS_URL,
+                             {"X-API-KEY: " + api_key_, "User-Agent: cs-skin-api/1.0"},
                              SKINSTRACK_TIMEOUT_SECONDS);
 
     switch (r.status) {
