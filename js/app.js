@@ -320,6 +320,17 @@ function renderTicker(rawSkins) {
     ticker.hidden = false;
 }
 
+// Drudge/Craigslist-style dense link list of the same trending skins.
+function renderMoving(rawSkins) {
+    const sec = $('whatsMoving');
+    const rows = rawSkins.map(normalizeSkin).filter(sk => sk.marketUrl);
+    sec.hidden = rows.length === 0;
+    $('movingList').replaceChildren(...rows.map(sk => h('li', {},
+        h('a', { href: sk.marketUrl, target: '_blank', rel: 'noopener noreferrer' }, sk.name),
+        ` — ${formatMoney(sk.cents)}`,
+        sk.skinstrack && ` — LIQ ${clampPct(sk.skinstrack.liquidity)}`)));
+}
+
 // A nonessential loop must stop while it can't be seen.
 function pauseTickerOffscreen() {
     const ticker = $('trendTicker');
@@ -341,14 +352,17 @@ async function loadHome() {
     if (state.demoMode) {
         const demo = demoTrending();
         renderTicker(demo.trending);
+        renderMoving(demo.trending);
         return renderPremium(demo.premium, grid);
     }
     try {
         const [hot, premium] = await Promise.all([api.trending(20, 1), api.trending(8, 100)]);
         renderTicker(hot.items);
+        renderMoving(hot.items);
         renderPremium(premium.items, grid);
     } catch (e) {
         $('trendTicker').hidden = true;
+        $('whatsMoving').hidden = true;
         setMessage(grid, e instanceof api.ApiError
             ? 'Trending prices load once SkinsTrack data is available. Add SKINSTRACK_API_KEY to .env and restart the API.'
             : 'Could not reach the API. Start it with scripts/dev.bat, then reload.');
