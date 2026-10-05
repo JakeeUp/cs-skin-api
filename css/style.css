@@ -25,7 +25,8 @@
     --wear-ww: #FB923C;
     --wear-bs: #EF4444;
 
-    --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-ui: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-display: 'Chakra Petch', 'Barlow', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
     --radius-sm: 6px;
@@ -43,7 +44,7 @@ body {
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-ui);
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.5;
     min-height: 100vh;
     overflow-x: hidden;
@@ -53,6 +54,11 @@ body {
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 img { max-width: 100%; display: block; }
+
+/* Display face: headings and the product's own voice (logo, nav, primary actions). */
+h1, h2, .logo-text, .topnav-link, .slot-title, .side-label,
+.btn-search, .btn-apply, .btn-optimize, .modal h2 { font-family: var(--font-display); }
+h1, h2 { letter-spacing: -0.01em; }
 
 .mono, .skin-price, .skin-price-alt, .summary-value, .results-count, .loadout-total,
 .slot-budget-tag, .skin-listings-badge, .price-field input { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
