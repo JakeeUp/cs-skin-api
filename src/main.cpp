@@ -2,6 +2,7 @@
 #include "config.hpp"
 #include "http_client.hpp"
 #include "optimizer.hpp"
+#include "skinstrack.hpp"
 #include "steam_market.hpp"
 #include "validation.hpp"
 #include <nlohmann/json.hpp>
@@ -61,8 +62,24 @@ static std::string bodyString(const json& body, const char* key, const std::stri
 
 // ─── Skin serialization ────────────────────────────────────
 
+static crow::json::wvalue skinstrackJson(const SkinstrackPrice& p) {
+    crow::json::wvalue j;
+    j["price_cents"] = p.price_cents;
+    j["liquidity"]   = p.liquidity;
+    j["count"]       = p.count;
+    j["volume"]      = p.volume;
+    j["updated_at"]  = p.updated_at;
+    return j;
+}
+
+// Adds "skinstrack" when the store has a price for this item.
+static void addSkinstrack(crow::json::wvalue& j, const Skin& s, const SkinstrackStore& store) {
+    if (auto p = store.find(s.hash_name))
+        j["skinstrack"] = skinstrackJson(*p);
+}
+
 // Full Steam search response shape (used by /search).
-static crow::json::wvalue skinToJson(const Skin& s) {
+static crow::json::wvalue skinToJson(const Skin& s, const SkinstrackStore& store) {
     crow::json::wvalue j;
     j["name"]            = s.name;
     j["hash_name"]       = s.hash_name;
@@ -73,11 +90,12 @@ static crow::json::wvalue skinToJson(const Skin& s) {
     j["icon_url"]        = s.icon_url;
     j["market_url"]      = s.market_url;
     j["rarity"]          = s.rarity;
+    addSkinstrack(j, s, store);
     return j;
 }
 
 // Compact shape used by /budget/optimize and /loadout/build.
-static crow::json::wvalue skinOptionJson(const Skin& s) {
+static crow::json::wvalue skinOptionJson(const Skin& s, const SkinstrackStore& store) {
     crow::json::wvalue o;
     o["name"]        = s.name;
     o["price"]       = s.price_text;
@@ -86,13 +104,15 @@ static crow::json::wvalue skinOptionJson(const Skin& s) {
     o["icon_url"]    = s.icon_url;
     o["market_url"]  = s.market_url;
     o["rarity"]      = s.rarity;
+    addSkinstrack(o, s, store);
     return o;
 }
 
-static std::vector<crow::json::wvalue> toOptionList(const std::vector<Skin>& skins) {
+static std::vector<crow::json::wvalue> toOptionList(const std::vector<Skin>&  skins,
+                                                    const SkinstrackStore&    store) {
     std::vector<crow::json::wvalue> out;
     out.reserve(skins.size());
-    for (const auto& s : skins) out.push_back(skinOptionJson(s));
+    for (const auto& s : skins) out.push_back(skinOptionJson(s, store));
     return out;
 }
 
@@ -101,6 +121,9 @@ static std::vector<crow::json::wvalue> toOptionList(const std::vector<Skin>& ski
 int main() {
     const Config config = loadConfig();
     setHttpCaBundle(config.ca_bundle);
+
+    SkinstrackStore skinstrack(config);
+    skinstrack.start();
 
     crow::App<crow::CORSHandler> app;
     auto& cors = app.get_middleware<crow::CORSHandler>();
@@ -124,7 +147,7 @@ int main() {
     });
 
     // GET /search?q=AK-47&min=0&max=300
-    CROW_ROUTE(app, "/search")([](const crow::request& req) {
+    CROW_ROUTE(app, "/search")([&skinstrack](const crow::request& req) {
         const char* q = req.url_params.get("q");
         std::string query = q ? q : "";
         if (!isValidQuery(query))
@@ -152,7 +175,7 @@ int main() {
         std::vector<crow::json::wvalue> results;
         results.reserve(skins.size());
         for (const auto& s : skins)
-            results.push_back(skinToJson(s));
+            results.push_back(skinToJson(s, skinstrack));
 
         crow::json::wvalue r;
         r["total_count"] = static_cast<int>(results.size());
@@ -183,9 +206,47 @@ int main() {
         return jsonResponse(200, r);
     });
 
+    // GET /skinstrack/status
+    CROW_ROUTE(app, "/skinstrack/status")([&skinstrack]() {
+        SkinstrackStatus s = skinstrack.status();
+        crow::json::wvalue r;
+        r["configured"]    = s.configured;
+        r["items"]         = s.items;
+        r["refresh_hours"] = s.refresh_hours;
+        if (s.fetched_at > 0) r["fetched_at"] = formatIsoUtc(s.fetched_at);
+        else                  r["fetched_at"] = nullptr;
+        if (!s.last_error.empty()) r["last_error"] = s.last_error;
+        else                       r["last_error"] = nullptr;
+        return jsonResponse(200, r);
+    });
+
+    // GET /skinstrack/price?name=AK-47+|+Redline+(Field-Tested)
+    CROW_ROUTE(app, "/skinstrack/price")([&skinstrack](const crow::request& req) {
+        const char* n = req.url_params.get("name");
+        std::string name = n ? n : "";
+        if (name.empty() || name.size() > 128)
+            return jsonError(400, "Missing or too long name parameter ?name=");
+
+        if (skinstrack.status().items == 0)
+            return jsonError(503, "SkinsTrack data not loaded");
+
+        auto p = skinstrack.find(name);
+        if (!p) return jsonError(404, "No SkinsTrack price for that item");
+
+        crow::json::wvalue r;
+        r["name"]        = name;
+        r["price_cents"] = p->price_cents;
+        r["liquidity"]   = p->liquidity;
+        r["count"]       = p->count;
+        r["volume"]      = p->volume;
+        r["updated_at"]  = p->updated_at;
+        r["icon_url"]    = p->icon_url;
+        return jsonResponse(200, r);
+    });
+
     // POST /budget/optimize
     // Body: { "budget": 50.00, "query": "AK-47" }
-    CROW_ROUTE(app, "/budget/optimize").methods(crow::HTTPMethod::Post)([](const crow::request& req) {
+    CROW_ROUTE(app, "/budget/optimize").methods(crow::HTTPMethod::Post)([&skinstrack](const crow::request& req) {
         crow::response error;
         auto body = parseBody(req, error);
         if (!body) return error;
@@ -221,7 +282,7 @@ int main() {
         r["skins_selected"] = static_cast<int>(selected.size());
         r["algorithm"]      = usesGreedy(budget_cents, static_cast<int>(skins.size()))
                                ? "greedy" : "knapsack_dp";
-        r["skins"]          = toOptionList(selected);
+        r["skins"]          = toOptionList(selected, skinstrack);
         return jsonResponse(200, r);
     });
 
@@ -233,7 +294,7 @@ int main() {
     //   "knife_budget":    50.00,   -- 0 or omitted = skip
     //   "gloves_budget":   30.00    -- 0 or omitted = skip
     // }
-    CROW_ROUTE(app, "/loadout/build").methods(crow::HTTPMethod::Post)([](const crow::request& req) {
+    CROW_ROUTE(app, "/loadout/build").methods(crow::HTTPMethod::Post)([&skinstrack](const crow::request& req) {
         crow::response error;
         auto body = parseBody(req, error);
         if (!body) return error;
@@ -274,7 +335,7 @@ int main() {
         crow::json::wvalue slots;
         auto addSlot = [&](const char* key, const std::vector<std::string>& queries, int cents) {
             auto opts = fetchSlotOptions(queries, cents, 5);
-            if (!opts.empty()) slots[key] = toOptionList(opts);
+            if (!opts.empty()) slots[key] = toOptionList(opts, skinstrack);
         };
 
         addSlot("primary",   primary_queries,   per_weapon_cents);
