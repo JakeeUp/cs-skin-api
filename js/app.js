@@ -260,7 +260,7 @@ function premiumTile(skin, n) {
         type: 'button', class: 'prem-tile',
         'aria-label': `${skin.name}, ${formatMoney(skin.cents)}. Open details`,
     },
-        h('span', { class: 'prem-no' }, `№ ${String(n).padStart(3, '0')}`),
+        h('span', { class: 'prem-no' }, `NO. ${String(n).padStart(3, '0')}`),
         skin.iconUrl ? h('img', { src: skin.iconUrl, alt: '', loading: 'lazy' }) : h('span', { class: 'prem-img-empty' }),
         h('span', { class: 'prem-name' }, getBaseName(skin.name)),
         h('span', { class: 'prem-price' }, formatMoney(skin.cents)));
