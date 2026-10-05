@@ -41,8 +41,13 @@ export async function isServerUp() {
     try { await request('/health', undefined, 2000); return true; } catch { return false; }
 }
 
-export const search = (q, min, max) =>
-    request(`/search?q=${encodeURIComponent(q)}&min=${encodeURIComponent(min)}&max=${encodeURIComponent(max)}`);
+// Empty limits are left off so the server applies none.
+export function search(q, min, max) {
+    const params = new URLSearchParams({ q });
+    if (min !== '') params.set('min', min);
+    if (max !== '') params.set('max', max);
+    return request(`/search?${params}`);
+}
 export const optimizeBudget = (budget, query) => post('/budget/optimize', { budget, query });
 export const buildLoadout = payload => post('/loadout/build', payload);
 export const skinstrackStatus = () => request('/skinstrack/status', undefined, 4000);

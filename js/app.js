@@ -247,8 +247,8 @@ function clearFilters() {
 
 async function searchSkins() {
     const q = $('weaponSelect').value;
-    const min = $('minPrice').value || 0;
-    const max = $('maxPrice').value || 999999;
+    const min = $('minPrice').value;
+    const max = $('maxPrice').value;
     const grid = $('searchResults');
 
     if (!q) return setMessage(grid, 'Please select a weapon first.');
