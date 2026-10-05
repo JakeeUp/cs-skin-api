@@ -46,6 +46,23 @@ export function clickBurst(times, now, count = 5, windowMs = 2000) {
     return next.length >= count ? { times: [], hit: true } : { times: next, hit: false };
 }
 
+export const DEAL_MS = 600000;
+
+// Deterministic deal slot: same skin for everyone within a 10-minute window.
+export function dealIndex(now, n) {
+    if (!(n > 0)) return -1;
+    return Math.floor(now / DEAL_MS) % n;
+}
+
+export function msUntilNextDeal(now) {
+    return DEAL_MS - (now % DEAL_MS);
+}
+
+export function formatMmSs(ms) {
+    const t = Math.max(0, Math.ceil((Number(ms) || 0) / 1000));
+    return `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
+}
+
 // ms until the next real price refresh (fetched_at + refresh_hours), or null if unknown.
 export function nextRefreshMs(fetchedAtIso, refreshHours, now) {
     const t = Date.parse(fetchedAtIso);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatCountdown, nextTarget, stepCounter, canShowPopup, KONAMI, konamiProgress, clickBurst, nextRefreshMs } from '../../js/chaos-lib.js';
+import { formatCountdown, nextTarget, stepCounter, canShowPopup, KONAMI, konamiProgress, clickBurst, nextRefreshMs, dealIndex, msUntilNextDeal, formatMmSs } from '../../js/chaos-lib.js';
 
 test('formatCountdown', () => {
     assert.equal(formatCountdown(0), '00D 00H 00M 00S');
@@ -47,6 +47,19 @@ test('clickBurst', () => {
     r = clickBurst([], 0);
     r = clickBurst(r.times, 5000);
     assert.equal(r.hit, false);
+});
+
+test('deal rotation', () => {
+    assert.equal(dealIndex(0, 5), 0);
+    assert.equal(dealIndex(599999, 5), 0);
+    assert.equal(dealIndex(600000, 5), 1);
+    assert.equal(dealIndex(600000 * 7, 5), 2);
+    assert.equal(dealIndex(123, 0), -1);
+    assert.equal(msUntilNextDeal(0), 600000);
+    assert.equal(msUntilNextDeal(599000), 1000);
+    assert.equal(msUntilNextDeal(600000), 600000);
+    assert.equal(formatMmSs(125000), '02:05');
+    assert.equal(formatMmSs(-1), '00:00');
 });
 
 test('nextRefreshMs', () => {

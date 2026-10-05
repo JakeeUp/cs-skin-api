@@ -1,5 +1,5 @@
 // SkinAPI Corp interactive chaos. Self-contained; every hook is optional.
-import { formatCountdown, nextTarget, stepCounter, canShowPopup, konamiProgress, clickBurst, nextRefreshMs } from './chaos-lib.js';
+import { formatCountdown, nextTarget, stepCounter, canShowPopup, konamiProgress, clickBurst, nextRefreshMs, dealIndex, msUntilNextDeal, formatMmSs } from './chaos-lib.js';
 
 const $ = (sel) => document.querySelector(sel);
 const start = Date.now();
@@ -93,6 +93,63 @@ function tickSchedule() {
     if (ev) ev.textContent = formatCountdown(target - Date.now());
     const left = refreshAt - Date.now();
     refreshNode.textContent = left > 0 ? formatCountdown(left) : 'DUE (any moment now)';
+}
+
+// 1c. Deal of the 10 minutes: one real trending skin, rotated deterministically.
+let dealList = [], dealSlot = null, dealRefs = null;
+async function initDeal() {
+    const home = $('#page-home');
+    if (!home) return;
+    let items = [];
+    try {
+        const { formatMoney, normalizeSkin } = await import('./lib.js');
+        try {
+            const api = await import('./api.js');
+            items = (await api.trending(20, 1))?.items || [];
+        } catch { /* fall back to demo data */ }
+        if (!items.length) {
+            const { DEMO_SKINS } = await import('./demo-data.js');
+            items = Object.values(DEMO_SKINS).flat();
+        }
+        dealList = items.map(normalizeSkin).filter((s) => s.name && Number.isFinite(s.cents) && s.marketUrl);
+        dealRefs = { formatMoney };
+    } catch { return; }
+    if (!dealList.length) return;
+
+    const img = el('img', null, 'chaos-deal-img');
+    img.alt = '';
+    img.width = 96; img.height = 72;
+    const name = el('p', null, 'chaos-deal-name');
+    const price = el('p', null, 'big-num chaos-deal-price');
+    const link = el('a', 'View on Steam Market', 'chaos-deal-link');
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    const clock = el('span', '--:--');
+    const note = el('p', null, 'tiny');
+    note.append('Price is real. Urgency is not. Next deal in ', clock, '.');
+    const { win } = makeWin({ title: 'DEAL OF THE 10 MINUTES', bodyNodes: [img, name, price, link, note], role: 'region', cls: 'chaos-deal-win' });
+    win.removeAttribute('aria-modal');
+    win.querySelector('.win-close')?.remove();
+    const wrap = el('div', null, 'chaos-deal');
+    wrap.append(win);
+    home.append(wrap);
+    dealRefs = { ...dealRefs, img, name, price, link, clock };
+    tickDeal();
+}
+function tickDeal() {
+    if (!dealRefs?.clock) return;
+    const now = Date.now();
+    const slot = Math.floor(now / 600000);
+    if (slot !== dealSlot) {
+        dealSlot = slot;
+        const s = dealList[dealIndex(now, dealList.length)];
+        const { img, name, price, link, formatMoney } = dealRefs;
+        if (/^https:\/\//.test(s.iconUrl)) { img.src = s.iconUrl; img.hidden = false; } else img.hidden = true;
+        name.textContent = s.name;
+        price.textContent = formatMoney(s.cents);
+        link.href = s.marketUrl;
+    }
+    dealRefs.clock.textContent = formatMmSs(msUntilNextDeal(now));
 }
 
 // 2. Dead-end counter
@@ -242,8 +299,9 @@ function eggWindow() {
 function init() {
     layer();
     tickCountdown();
-    setInterval(() => { tickCountdown(); tickSchedule(); }, 1000);
+    setInterval(() => { tickCountdown(); tickSchedule(); tickDeal(); }, 1000);
     initSchedule();
+    initDeal();
     scheduleCounter();
     setInterval(popupTick, 2000);
     // Close a popup the moment Home is hidden, not on the next tick, so it
