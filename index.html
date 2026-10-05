@@ -28,6 +28,7 @@
                 <button type="button" class="topnav-link" data-page="budget">Budget</button>
                 <button type="button" class="topnav-link" data-page="loadout">Loadout</button>
             </nav>
+            <span class="st-chip" id="stChip" hidden></span>
             <form class="search-inline" id="searchForm" role="search">
                 <label class="sr-only" for="weaponSelect">Weapon</label>
                 <select id="weaponSelect" class="weapon-select">
@@ -203,6 +204,8 @@
             </div>
         </section>
     </main>
+
+    <dialog id="skinModal" class="modal" aria-labelledby="skinModalTitle"></dialog>
 
     <script type="module" src="js/app.js"></script>
 </body>

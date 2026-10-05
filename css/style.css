@@ -393,3 +393,70 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ─── SkinsTrack: card extras, chip, detail modal ───────── */
+.blk { display: block; }
+button.skin-card { width: 100%; text-align: left; color: inherit; font: inherit; padding: 0; cursor: pointer; }
+button.skin-card:focus-visible { outline-offset: 2px; }
+.list-mode .skin-card { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; }
+.skin-price-row.alt { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); align-items: center; }
+.skin-price-alt { font-size: 12px; color: var(--text-2); }
+
+.meter { display: inline-block; width: 54px; height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; vertical-align: middle; }
+.meter-fill { display: block; height: 100%; border-radius: inherit; }
+.meter.high .meter-fill { background: var(--success); }
+.meter.mid .meter-fill { background: var(--accent); }
+.meter.low .meter-fill { background: var(--danger); }
+
+.discount-badge {
+    position: absolute; top: 8px; right: 8px; z-index: 1;
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;
+    padding: 2px 7px; border-radius: 4px; border: 1px solid currentColor;
+}
+.discount-badge.good { color: var(--success); background: var(--success-soft); }
+.discount-badge.bad { color: #F87171; background: var(--danger-soft); }
+.modal-tags .discount-badge { position: static; }
+
+.st-chip {
+    font-family: var(--font-mono); font-size: 11.5px; color: var(--text-3);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; white-space: nowrap;
+}
+.st-chip.on { color: var(--success); border-color: rgba(34,197,94,0.4); background: var(--success-soft); }
+.st-chip.err { color: var(--accent); border-color: rgba(245,158,11,0.4); background: var(--accent-soft); }
+.st-chip[hidden] { display: none; }
+
+.modal {
+    --rarity: var(--border-strong);
+    margin: auto; padding: 0; border: 1px solid var(--border-strong); border-top: 3px solid var(--rarity);
+    border-radius: var(--radius-lg); background: var(--surface); color: var(--text);
+    width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto;
+}
+.modal::backdrop { background: rgba(4, 5, 7, 0.78); }
+.modal-card { position: relative; padding: 22px; display: grid; gap: 18px; }
+.modal-close {
+    position: absolute; top: 10px; right: 10px; width: 34px; height: 34px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 20px; line-height: 1; color: var(--text-2);
+}
+.modal-close:hover { color: var(--text); }
+.modal-head { display: flex; gap: 16px; align-items: center; padding-right: 36px; }
+.modal-head img { width: 110px; flex: none; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.5)); }
+.modal-head h2 { font-size: 18px; line-height: 1.3; margin-bottom: 8px; overflow-wrap: anywhere; }
+.modal-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.st-badge.static { position: static; }
+.rarity-tag { font-size: 11px; color: var(--rarity); border: 1px solid currentColor; border-radius: 4px; padding: 2px 8px; }
+.cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cmp-col { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; min-width: 0; }
+.cmp-col h3 { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+.cmp-price { font-family: var(--font-mono); font-size: 22px; font-weight: 600; color: var(--accent); margin-bottom: 10px; }
+.cmp-none { color: var(--text-3); font-size: 13px; }
+.cmp-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 5px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.cmp-row dt { color: var(--text-3); }
+.cmp-row dd { font-family: var(--font-mono); }
+.modal-link { justify-content: center; text-decoration: none; }
+
+@media (max-width: 520px) {
+    .st-chip { order: 2; }
+    .modal-head img { width: 80px; }
+    .cmp { grid-template-columns: 1fr; }
+}

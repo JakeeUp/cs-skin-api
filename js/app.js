@@ -3,6 +3,7 @@ import { getDemoSkins } from './demo-data.js';
 import {
     WEARS, WEAPON_GROUPS, getWear, getBaseName, isStatTrak, formatMoney,
     normalizeSkin, filterSkins, sortSkins, rarityColor,
+    discountPct, clampPct, timeAgo,
 } from './lib.js';
 
 const $ = id => document.getElementById(id);
@@ -91,23 +92,128 @@ function skinCard(skin) {
     const wear = getWear(skin.name);
     const baseName = getBaseName(skin.name);
     const color = rarityColor(skin.rarity);
-    return h('article', { class: 'skin-card', style: color && `--rarity:${color}` },
-        h('a', {
-            href: skin.marketUrl || '#', target: '_blank', rel: 'noopener noreferrer', class: 'skin-link',
-        },
-            h('div', { class: 'skin-img-wrap' },
-                isStatTrak(skin.name) && h('div', { class: 'st-badge' }, 'StatTrak™'),
-                skin.iconUrl
-                    ? h('img', { src: skin.iconUrl, alt: baseName, loading: 'lazy' })
-                    : h('div', { class: 'skin-img-placeholder' }, '◈')),
-            h('div', { class: 'skin-body' },
-                h('div', { class: 'skin-wear-row' },
-                    wearBadge(wear),
-                    h('span', { class: 'skin-listings-badge' }, `${skin.listings} listings`)),
-                h('div', { class: 'skin-name' }, baseName),
-                h('div', { class: 'skin-price-row' },
-                    h('span', { class: 'skin-price' }, formatMoney(skin.cents)),
-                    h('span', { class: 'btn-buy' }, 'View →')))));
+    const st = skin.skinstrack;
+    const pct = st ? discountPct(skin.cents, st.price_cents) : null;
+    const card = h('button', {
+        type: 'button', class: 'skin-card', style: color && `--rarity:${color}`,
+        'aria-label': `${skin.name}, ${formatMoney(skin.cents)}. Open details`,
+    },
+        h('span', { class: 'skin-img-wrap blk' },
+            isStatTrak(skin.name) && h('span', { class: 'st-badge' }, 'StatTrak™'),
+            pct != null && pct !== 0 && discountBadge(pct),
+            skin.iconUrl
+                ? h('img', { src: skin.iconUrl, alt: '', loading: 'lazy' })
+                : h('span', { class: 'skin-img-placeholder' }, '◈')),
+        h('span', { class: 'skin-body blk' },
+            h('span', { class: 'skin-wear-row' },
+                wearBadge(wear),
+                h('span', { class: 'skin-listings-badge' }, `${skin.listings} listings`)),
+            h('span', { class: 'skin-name blk' }, baseName),
+            h('span', { class: 'skin-price-row' },
+                h('span', { class: 'skin-price' }, formatMoney(skin.cents)),
+                h('span', { class: 'btn-buy' }, 'Details →')),
+            st && h('span', { class: 'skin-price-row alt' },
+                h('span', { class: 'skin-price-alt' }, `SkinsTrack ${formatMoney(st.price_cents)}`),
+                liquidityMeter(st.liquidity)),
+        ));
+    card.addEventListener('click', () => openDetail(skin, card));
+    return card;
+}
+
+function discountBadge(pct) {
+    const cheaper = pct > 0;
+    return h('span', { class: 'discount-badge ' + (cheaper ? 'good' : 'bad') },
+        `${cheaper ? '−' : '+'}${Math.abs(pct)}% vs Steam`);
+}
+
+function liquidityMeter(value) {
+    const v = clampPct(value);
+    const level = v >= 66 ? 'high' : v >= 33 ? 'mid' : 'low';
+    return h('span', {
+        class: `meter ${level}`, role: 'meter', 'aria-label': 'Liquidity',
+        'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': v, title: `Liquidity ${v}/100`,
+    }, h('span', { class: 'meter-fill', style: `width:${v}%` }));
+}
+
+// ─── Detail modal ──────────────────────────────────────────
+
+function statRow(label, value) {
+    return h('div', { class: 'cmp-row' }, h('dt', {}, label), h('dd', {}, value));
+}
+
+function openDetail(skin, opener) {
+    const dlg = $('skinModal');
+    const st = skin.skinstrack;
+    const pct = st ? discountPct(skin.cents, st.price_cents) : null;
+    const color = rarityColor(skin.rarity);
+    dlg.style.setProperty('--rarity', color || 'var(--border-strong)');
+
+    const steam = h('section', { class: 'cmp-col', 'aria-labelledby': 'cmpSteam' },
+        h('h3', { id: 'cmpSteam' }, 'Steam Market'),
+        h('p', { class: 'cmp-price' }, formatMoney(skin.cents)),
+        h('dl', {}, statRow('Listings', String(skin.listings))));
+    const track = h('section', { class: 'cmp-col', 'aria-labelledby': 'cmpTrack' },
+        h('h3', { id: 'cmpTrack' }, 'SkinsTrack'),
+        st ? [
+            h('p', { class: 'cmp-price' }, formatMoney(st.price_cents)),
+            h('dl', {},
+                statRow('Liquidity', liquidityMeter(st.liquidity)),
+                statRow('Offers', Number(st.count || 0).toLocaleString('en-US')),
+                statRow('Volume', Number(st.volume || 0).toLocaleString('en-US')),
+                st.updated_at && statRow('Updated', timeAgo(st.updated_at))),
+        ] : h('p', { class: 'cmp-none' }, 'No SkinsTrack data for this skin.'));
+
+    dlg.replaceChildren(h('div', { class: 'modal-card' },
+        h('button', { type: 'button', class: 'modal-close', 'aria-label': 'Close details' }, '×'),
+        h('header', { class: 'modal-head' },
+            skin.iconUrl && h('img', { src: skin.iconUrl, alt: '' }),
+            h('div', {},
+                h('h2', { id: 'skinModalTitle' }, getBaseName(skin.name)),
+                h('p', { class: 'modal-tags' },
+                    wearBadge(getWear(skin.name)),
+                    isStatTrak(skin.name) && h('span', { class: 'st-badge static' }, 'StatTrak™'),
+                    skin.rarity && h('span', { class: 'rarity-tag' }, skin.rarity),
+                    pct != null && pct !== 0 && discountBadge(pct)))),
+        h('div', { class: 'cmp' }, steam, track),
+        skin.marketUrl && h('a', {
+            class: 'btn-optimize modal-link', href: skin.marketUrl, target: '_blank', rel: 'noopener noreferrer',
+        }, 'Open on Steam Market ↗')));
+
+    dlg.querySelector('.modal-close').addEventListener('click', () => dlg.close());
+    dlg.returnTarget = opener;
+    dlg.showModal();
+}
+
+function initModal() {
+    const dlg = $('skinModal');
+    // Clicking the dim backdrop (the dialog element itself) closes it.
+    dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+    // Esc closes natively; restore focus explicitly for older browsers.
+    dlg.addEventListener('close', () => {
+        const t = dlg.returnTarget;
+        if (t && t.isConnected) t.focus();
+    });
+}
+
+// ─── SkinsTrack status chip ────────────────────────────────
+
+async function showSkinstrackStatus() {
+    const chip = $('stChip');
+    try {
+        const s = await api.skinstrackStatus();
+        let text = 'SkinsTrack · not configured';
+        if (s.configured) {
+            text = `SkinsTrack · ${Number(s.items || 0).toLocaleString('en-US')} items`;
+            if (s.fetched_at) text += ` · updated ${timeAgo(s.fetched_at)}`;
+        }
+        chip.textContent = text;
+        chip.classList.toggle('on', Boolean(s.configured));
+        chip.classList.toggle('err', Boolean(s.last_error));
+        if (s.last_error) chip.title = `Last error: ${s.last_error}`;
+        chip.hidden = false;
+    } catch {
+        chip.hidden = true;
+    }
 }
 
 function renderSkins(rawSkins, container) {
@@ -318,8 +424,10 @@ function init() {
 
     setSide('T');
 
+    initModal();
+
     api.isServerUp().then(up => {
-        if (up) return;
+        if (up) return showSkinstrackStatus();
         enterDemoMode();
         $('weaponSelect').value = 'AK-47';
         state.skins = getDemoSkins('AK-47');
