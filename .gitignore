@@ -1,6 +1,24 @@
+# Build output
 build/
 .cmake/
 CMakeFiles/
 *.exe
 *.o
+
+# Secrets - never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local runtime cache (SkinsTrack price snapshot)
+/data/
+
+# Editor workspace settings - specific to one machine
 .vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
