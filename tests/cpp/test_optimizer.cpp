@@ -158,4 +158,17 @@ TEST(greedy_never_exceeds_capacity) {
     CHECK(distinctInputs(picked, items));
 }
 
+TEST(negative_capacity_returns_nothing) {
+    auto items = makeSkins({100, 200});
+    CHECK(knapsackOptimize(items, -1).empty());
+    CHECK(knapsackOptimize(items, -500).empty());
+}
+
+TEST(negative_prices_are_ignored) {
+    auto items = makeSkins({-50, 300, 200});
+    auto picked = knapsackOptimize(items, 500);
+    CHECK_EQ(total(picked), 500);
+    for (const auto& s : picked) CHECK(s.price_cents >= 0);
+}
+
 int main() { return runTests(); }

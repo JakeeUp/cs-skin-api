@@ -10,7 +10,15 @@
 // Falls back to a greedy heuristic (largest-first) for larger inputs
 // where DP would be impractical.
 
-std::vector<Skin> knapsackOptimize(const std::vector<Skin>& items, int capacity) {
+std::vector<Skin> knapsackOptimize(const std::vector<Skin>& allItems, int capacity) {
+    if (capacity <= 0) return {};
+
+    // A negative price would index outside the DP table; such listings are bogus anyway.
+    std::vector<Skin> items;
+    items.reserve(allItems.size());
+    for (const auto& s : allItems)
+        if (s.price_cents >= 0) items.push_back(s);
+
     int n = static_cast<int>(items.size());
 
     if (usesGreedy(capacity, n)) {
