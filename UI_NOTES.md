@@ -44,7 +44,7 @@ Ideas only; no code or assets were copied.
 
 | Reference | What they do | What we did |
 |---|---|---|
-| Bloomberg / Berghain ([brainy.ink](https://brainy.ink/paper/brutalist-web-design-2026)) | Type sized to the viewport, tight leading, text running into the screen edge | Home headline uses a `vw` clamp at 0.8 leading and bleeds off the right edge; overflow is clipped on the hero only, never the page |
+| Bloomberg / Berghain ([brainy.ink](https://brainy.ink/paper/brutalist-web-design-2026)) | Type sized to the viewport, tight leading, text running into the screen edge | Tried, then reverted: a viewport-scale headline filled the first screen and hid every skin. Home now opens with the trending tape, and the headline is a compact 40–96px. Product first, type second |
 | Balenciaga ([SuperDesign brutalism](https://superdesign.dev/styles/brutalism)) | Stark white product tiles with nothing but image, name and price | `#premiumGrid` tiles are white with an oversized Space Mono price; hover inverts; still opens the detail modal |
 | Drudge / Craigslist | Dense columns of plain default-blue links on a flat page | Home "WHAT'S MOVING": all-caps trending skins, each a real Steam link in `#0000EE` (visited `#551A8B`) on a `#fafafa` panel |
 | MSCHF ([Wikipedia](https://en.wikipedia.org/wiki/MSCHF)) | Products framed as numbered drops | A small catalogue number ("№ 001") on each premium tile, and nothing else |
