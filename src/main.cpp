@@ -1,4 +1,5 @@
 #include "crow_all.h"
+#include "config.hpp"
 #include "http_client.hpp"
 #include "optimizer.hpp"
 #include "steam_market.hpp"
@@ -44,11 +45,16 @@ static std::vector<crow::json::wvalue> toOptionList(const std::vector<Skin>& ski
 }
 
 int main() {
+    const Config config = loadConfig();
+    setHttpCaBundle(config.ca_bundle);
+
     crow::App<crow::CORSHandler> app;
     auto& cors = app.get_middleware<crow::CORSHandler>();
     cors.global()
         .headers("Content-Type")
         .methods("GET"_method, "POST"_method);
+    if (!config.allowed_origin.empty())
+        cors.global().origin(config.allowed_origin);
 
     // GET /
     CROW_ROUTE(app, "/")([]() {
@@ -256,5 +262,5 @@ int main() {
         }
     });
 
-    app.port(8080).multithreaded().run();
+    app.port(static_cast<uint16_t>(config.port)).multithreaded().run();
 }

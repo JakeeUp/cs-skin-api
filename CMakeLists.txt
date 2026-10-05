@@ -14,6 +14,7 @@ find_package(CURL REQUIRED)
 
 # Everything except main.cpp, so tests can link the same code.
 add_library(skin_core STATIC
+    src/config.cpp
     src/http_client.cpp
     src/optimizer.cpp
     src/steam_market.cpp
