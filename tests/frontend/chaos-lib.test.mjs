@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatCountdown, nextTarget, stepCounter, canShowPopup, KONAMI, konamiProgress, clickBurst, nextRefreshMs, dealIndex, msUntilNextDeal, formatMmSs } from '../../js/chaos-lib.js';
+import { formatCountdown, nextTarget, stepCounter, canShowPopup, KONAMI, konamiProgress, clickBurst, nextRefreshMs, dealIndex, msUntilNextDeal, formatMmSs, rejectMessage, queueNumber } from '../../js/chaos-lib.js';
 
 test('formatCountdown', () => {
     assert.equal(formatCountdown(0), '00D 00H 00M 00S');
@@ -60,6 +60,24 @@ test('deal rotation', () => {
     assert.equal(msUntilNextDeal(600000), 600000);
     assert.equal(formatMmSs(125000), '02:05');
     assert.equal(formatMmSs(-1), '00:00');
+});
+
+test('captcha rejections escalate and never accept', () => {
+    const seen = new Set();
+    for (let i = 1; i <= 8; i++) {
+        const m = rejectMessage(i);
+        assert.match(m, /^Incorrect/);
+        seen.add(m);
+    }
+    assert.equal(seen.size, 8);
+    assert.match(rejectMessage(0), /^Incorrect/);
+});
+
+test('queueNumber only goes up', () => {
+    assert.equal(queueNumber(48113, 0), 48113);
+    assert.ok(queueNumber(48113, 1, () => 0) === 48114);
+    let prev = 48113;
+    for (let i = 1; i < 20; i++) { const v = queueNumber(48113, i, () => 0.5); assert.ok(v > prev); prev = v; }
 });
 
 test('nextRefreshMs', () => {

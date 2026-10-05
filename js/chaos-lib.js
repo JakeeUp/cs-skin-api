@@ -46,6 +46,25 @@ export function clickBurst(times, now, count = 5, windowMs = 2000) {
     return next.length >= count ? { times: [], hit: true } : { times: next, hit: false };
 }
 
+const REJECTS = [
+    'Incorrect. Regret is not always visible from here.',
+    'Incorrect. You selected the right squares for the wrong reasons.',
+    'Incorrect. The squares have been consulted and disagree.',
+    'Incorrect. Please select more regret, but also less.',
+];
+// Escalating deadpan rejection; attempt is 1-based, always a rejection.
+export function rejectMessage(attempt) {
+    const n = Math.max(1, Math.floor(Number(attempt) || 1));
+    return n <= REJECTS.length ? REJECTS[n - 1] : `Incorrect. Attempt ${n}. Disappointment is cumulative.`;
+}
+
+// Waiting-room position only ever goes up.
+export function queueNumber(base, ticks, rnd = Math.random) {
+    let v = base;
+    for (let i = 0; i < ticks; i++) v += 1 + Math.floor(rnd() * 9);
+    return v;
+}
+
 export const DEAL_MS = 600000;
 
 // Deterministic deal slot: same skin for everyone within a 10-minute window.

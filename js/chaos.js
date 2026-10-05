@@ -1,5 +1,5 @@
 // SkinAPI Corp interactive chaos. Self-contained; every hook is optional.
-import { formatCountdown, nextTarget, stepCounter, canShowPopup, konamiProgress, clickBurst, nextRefreshMs, dealIndex, msUntilNextDeal, formatMmSs } from './chaos-lib.js';
+import { formatCountdown, nextTarget, stepCounter, canShowPopup, konamiProgress, clickBurst, nextRefreshMs, dealIndex, msUntilNextDeal, formatMmSs, rejectMessage, queueNumber } from './chaos-lib.js';
 
 const $ = (sel) => document.querySelector(sel);
 const start = Date.now();
@@ -170,6 +170,8 @@ function scheduleCounter() {
 const STEPS = [
     { h: 'Confirm you want to confirm', p: 'Before you confirm, please confirm that you intend to confirm. Nothing is being collected.', yes: 'Confirm', no: 'No thanks, I enjoy overpaying' },
     { h: 'Are you sure you are sure?', p: 'Our records show you were sure 4 seconds ago. We need it in writing, which we will not accept.', yes: 'I am sure', no: 'I like waiting in line' },
+    { h: 'Prove you are human', p: 'Select all squares containing regret.', captcha: true },
+    { h: 'Waiting room', p: 'Your session is important to us. It is not important enough to hurry.', waiting: true },
     { h: 'Processing', p: 'Verifying your verification.', progress: true },
     { h: 'Almost there', p: 'You are 99 steps from step 1. Please return to the start of the start.', yes: 'Start over', no: 'Abandon cart (the cart abandons you)' },
 ];
@@ -220,6 +222,38 @@ function openTrap(opener) {
                 }
                 fill.style.width = `${pct}%`;
             }, 180);
+            return;
+        }
+        if (s.captcha) {
+            const grid = el('div', null, 'chaos-grid');
+            grid.setAttribute('role', 'group');
+            grid.setAttribute('aria-label', 'Select all squares containing regret');
+            const LABELS = ['Sunk cost', 'Old wishlist', 'Wrong wear', 'Impulse buy', 'Float 0.999', 'Sticker craft', 'Majority of trades', 'Last Tuesday', 'This tab'];
+            LABELS.forEach((l) => {
+                const sq = btn(l, 'chaos-sq');
+                sq.setAttribute('aria-pressed', 'false');
+                sq.addEventListener('click', () => sq.setAttribute('aria-pressed', sq.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'));
+                grid.append(sq);
+            });
+            const verify = btn('Verify', 'btn-guilt chaos-yes');
+            let tries = 0;
+            verify.addEventListener('click', () => {
+                tries++;
+                grid.querySelectorAll('.chaos-sq').forEach((q) => q.setAttribute('aria-pressed', 'false'));
+                if (tries >= 4) { step++; render(); (actions.querySelector('button') || close).focus(); return; }
+                p.textContent = rejectMessage(tries);
+            });
+            actions.append(grid, verify);
+            return;
+        }
+        if (s.waiting) {
+            let place = queueNumber(48113, 0);
+            const show = () => { p.textContent = `You are #${place.toLocaleString('en-US')} in line. Your position has been updated (upward).`; };
+            show();
+            timer = setInterval(() => { place = queueNumber(place, 1); show(); }, 1500);
+            const go = btn('Skip the line (not offered)', 'btn-guilt chaos-yes');
+            go.addEventListener('click', () => { step++; render(); (actions.querySelector('button') || close).focus(); });
+            actions.append(go);
             return;
         }
         const yes = btn(s.yes, 'btn-guilt chaos-yes');
