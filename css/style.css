@@ -388,7 +388,7 @@ button.skin-card:focus-visible { outline-offset: 4px; }
 .h-stage { position: relative; max-width: 1360px; margin: 0 auto; padding: 28px var(--gutter) 40px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; }
 /* Type bleed: headline sized to the viewport, tight leading, running off the right edge. Clipped on the hero only. */
 .h-stage:first-child { max-width: none; padding-right: 0; overflow-x: clip; }
-.mega { grid-column: 1 / -1; grid-row: 1; font-size: clamp(56px, 17vw, 340px); line-height: 0.8; letter-spacing: -0.02em; margin-right: -6vw; margin-bottom: 8px; }
+.mega { grid-column: 1 / -1; grid-row: 1; font-size: clamp(56px, 17vw, 340px); line-height: 0.92; letter-spacing: -0.02em; margin-right: -6vw; padding-top: 0.04em; margin-bottom: 8px; }
 .win-tracker { grid-column: 1 / 5; grid-row: 2; margin: 0; transform: rotate(-1deg); z-index: 2; }
 .win-cta { grid-column: 5 / 12; grid-row: 2; margin: 0 var(--gutter) 0 0; transform: rotate(1deg); z-index: 3; }
 .cta-copy { font-weight: 700; font-size: 16px; margin-bottom: 14px; }
