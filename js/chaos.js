@@ -1,5 +1,5 @@
 // SkinAPI Corp interactive chaos. Self-contained; every hook is optional.
-import { formatCountdown, nextTarget, stepCounter, canShowPopup, konamiProgress, clickBurst } from './chaos-lib.js';
+import { formatCountdown, nextTarget, stepCounter, canShowPopup, konamiProgress, clickBurst, nextRefreshMs } from './chaos-lib.js';
 
 const $ = (sel) => document.querySelector(sel);
 const start = Date.now();
@@ -62,6 +62,37 @@ function tickCountdown() {
         return;
     }
     node.textContent = formatCountdown(left);
+}
+
+// 1b. Drop schedule: real price-refresh row beside the pointless event.
+let refreshAt = null, refreshNode = null;
+async function initSchedule() {
+    const anchor = $('#chaosCountdown')?.closest('p');
+    if (!anchor) return;
+    let st;
+    try { st = await (await import('./api.js')).skinstrackStatus(); } catch { return; }
+    const ms = st && st.configured ? nextRefreshMs(st.fetched_at, st.refresh_hours, Date.now()) : null;
+    if (ms == null) return;
+    refreshAt = Date.now() + ms;
+    const list = el('ul', null, 'chaos-schedule');
+    const row = (label) => {
+        const li = el('li');
+        const v = el('span', '--', 'chaos-sched-val');
+        li.append(el('span', label), ' — ', v);
+        list.append(li);
+        return v;
+    };
+    row('THE EVENT').id = 'chaosSchedEvent';
+    refreshNode = row('NEXT PRICE REFRESH');
+    anchor.after(list);
+    tickSchedule();
+}
+function tickSchedule() {
+    if (refreshAt == null || !refreshNode) return;
+    const ev = $('#chaosSchedEvent');
+    if (ev) ev.textContent = formatCountdown(target - Date.now());
+    const left = refreshAt - Date.now();
+    refreshNode.textContent = left > 0 ? formatCountdown(left) : 'DUE (any moment now)';
 }
 
 // 2. Dead-end counter
@@ -211,7 +242,8 @@ function eggWindow() {
 function init() {
     layer();
     tickCountdown();
-    setInterval(tickCountdown, 1000);
+    setInterval(() => { tickCountdown(); tickSchedule(); }, 1000);
+    initSchedule();
     scheduleCounter();
     setInterval(popupTick, 2000);
     // Close a popup the moment Home is hidden, not on the next tick, so it

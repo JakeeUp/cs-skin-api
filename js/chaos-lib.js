@@ -45,3 +45,11 @@ export function clickBurst(times, now, count = 5, windowMs = 2000) {
     const next = [...times, now].filter((t) => now - t <= windowMs);
     return next.length >= count ? { times: [], hit: true } : { times: next, hit: false };
 }
+
+// ms until the next real price refresh (fetched_at + refresh_hours), or null if unknown.
+export function nextRefreshMs(fetchedAtIso, refreshHours, now) {
+    const t = Date.parse(fetchedAtIso);
+    const h = Number(refreshHours);
+    if (!fetchedAtIso || !Number.isFinite(t) || !Number.isFinite(h) || h <= 0) return null;
+    return Math.max(0, t + h * 3600000 - now);
+}

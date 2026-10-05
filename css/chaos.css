@@ -24,6 +24,10 @@
 html.chaos-override body { filter: invert(1) hue-rotate(180deg); }
 html.chaos-override .chaos-banner { filter: none; }
 
+/* Drop schedule */
+.chaos-schedule { list-style: none; margin: 8px 0 0; padding: 0; font: .8rem var(--font-mono, monospace); text-transform: uppercase; }
+.chaos-schedule li { border-top: 2px solid var(--ink, #000); padding: 3px 0; }
+
 /* Hover chaos: decorative only. */
 @media (prefers-reduced-motion: no-preference) {
     @keyframes chaos-jitter { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-2px, 1px) skewX(-2deg); } 50% { transform: translate(2px, -1px); } 75% { transform: translate(-1px, -2px) skewX(2deg); } }
