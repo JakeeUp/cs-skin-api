@@ -2,7 +2,7 @@
 
 # SkinAPI
 
-**Real-time CS2 skin market data, budget optimization, and loadout building — powered by C++17**
+**Live CS2 skin prices, a budget optimizer and a loadout builder, written in C++17**
 
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue?logo=cplusplus)
 ![CMake](https://img.shields.io/badge/build-CMake-064F8C?logo=cmake)
@@ -18,9 +18,9 @@
 
 ## Overview
 
-SkinAPI is a C++17 REST API that pulls live CS2 skin prices from the Steam Community Market and [SkinsTrack](https://skinstrack.com), and exposes trending skins, search, price comparison, budget optimization, and loadout building through a JSON interface.
+SkinAPI is a C++17 REST API for CS2 skin prices. It pulls live data from the Steam Community Market and [SkinsTrack](https://skinstrack.com), then serves it back as JSON. You can look up trending skins, search, compare prices, spend a budget, or build a full loadout.
 
-The frontend is a brutalist, deliberately unauthorized-looking storefront for the fictional **SkinAPI Corp**: safety-yellow ticker tape, condensed headlines, raw monospace, and satire on the Home page only. The tools themselves (Market, Budget, Loadout) stay honest: real prices, real Steam links, no tricks.
+The frontend is a storefront for **SkinAPI Corp**, a fake company that looks like it shouldn't exist. Think safety-yellow ticker tape, condensed headlines and raw monospace. The jokes stay on the Home page, though. Market, Budget and Loadout are straight tools with real prices and real Steam links.
 
 ![Home page: trending skins tape under the nav](assets/screenshots/home.png)
 
@@ -29,28 +29,28 @@ The frontend is a brutalist, deliberately unauthorized-looking storefront for th
 ## Features
 
 ### Home: Trending Skins
-The landing page shows a continuously scrolling row of the most liquid skins on the market, plus a grid of premium picks over $100. Both come from the cached SkinsTrack snapshot, so they never spend API calls. The row pauses on hover or keyboard focus and becomes a still, swipeable row for visitors who prefer reduced motion.
+The landing page has a scrolling row of the most liquid skins on the market and a grid of premium picks over $100. Both read from the cached SkinsTrack snapshot, so they don't cost any API calls. The row stops when you hover or focus it. If you've asked for reduced motion, it's just a still row you can swipe.
 
-Home also carries the SkinAPI Corp satire: a "BUY EVERY SKIN" checkout that loops forever (it has no input fields and collects nothing), a countdown to a pointless event beside a real one for the next price refresh, a "Deal of the 10 Minutes" with a real price, and a few easter eggs.
+Home is also where the SkinAPI Corp bits live. There's a "BUY EVERY SKIN" checkout that loops forever (no input fields, collects nothing), a countdown to a pointless event sitting next to a real one for the next price refresh, a "Deal of the 10 Minutes" with a real price, and a few easter eggs.
 
 <p align="center"><img src="assets/screenshots/mobile.png" alt="Home page on a phone" width="300"></p>
 
 ### Market Search
-Search CS2 skins by weapon name with live Steam Market data. Filter results by price range, wear condition (FN/MW/FT/WW/BS), and StatTrak status. Toggle between grid and list views.
+Search by weapon name and get live Steam Market results. You can filter by price, wear (FN/MW/FT/WW/BS) and StatTrak, and switch between grid and list views.
 
-Each card shows the Steam price beside the SkinsTrack price, a liquidity meter, and how far the two differ. Click a card to compare both sources side by side.
+Every card puts the Steam price next to the SkinsTrack price, with a liquidity meter and the gap between the two. Click one to see both sources side by side.
 
 ![Market search for AK-47 with filters](assets/screenshots/market.png)
 
 ![Detail view comparing Steam and SkinsTrack prices](assets/screenshots/detail.png)
 
 ### Budget Optimizer
-Enter a dollar budget and a weapon — the optimizer fetches available skins and runs a **0/1 knapsack algorithm** to select the combination that maximizes total value without exceeding your budget. Uses dynamic programming for budgets up to $500, with a greedy fallback for larger inputs.
+Give it a dollar amount and a weapon. It grabs the skins on offer and runs a **0/1 knapsack** to find the mix that gets you the most value without going over. Budgets up to $500 use dynamic programming. Anything bigger falls back to a greedy pass, which is close enough and a lot faster.
 
 ![Budget optimizer spending exactly $50.00 across 15 AWP skins](assets/screenshots/budget.png)
 
 ### Loadout Builder
-Pick T or CT side and set separate budgets for primary weapons, secondary weapons, knife, and gloves. A **round-robin interleaving algorithm** ensures variety across weapon types — you won't get five AK-47 skins when you wanted a diverse loadout.
+Pick T or CT, then set separate budgets for weapons, knife and gloves. Picks are interleaved **round-robin** across weapon types. So you won't ask for a loadout and get five AK-47s back.
 
 ![Loadout builder for T side](assets/screenshots/loadout.png)
 
@@ -102,38 +102,38 @@ Pick T or CT side and set separate budgets for primary weapons, secondary weapon
 
 ### Configuration
 
-Copy `.env.example` to `.env` and fill in the required values:
+Copy `.env.example` to `.env` and fill it in:
 
 ```bash
 cp .env.example .env
 ```
 
-Key variables:
-- **`SKINSTRACK_API_KEY`**: SkinsTrack API key from [skinstrack.com/api-pricing](https://skinstrack.com/api-pricing). The free plan allows 50 calls/month; the server caches the full price list and refreshes at most every `SKINSTRACK_REFRESH_HOURS`.
-- **`SKINSTRACK_REFRESH_HOURS`**: Refresh interval in hours (default: 24). At 24-hour intervals, the API uses ~30 of the 50 monthly calls.
-- **`SKINSTRACK_CACHE_FILE`**: Where the cached price list is stored (default: `data/skinstrack-items.json`).
-- **`PORT`**: Server port (default: 8080).
-- **`ALLOWED_ORIGIN`**: Browser origin allowed to call the API for CORS. Set this to the exact origin where the frontend is served, e.g., `http://127.0.0.1:5500` for local development or your GitHub Pages URL.
-- **`CURL_CA_BUNDLE`**: Optional CA certificate bundle for HTTPS verification. On MSYS2, use `C:/msys64/ucrt64/etc/ssl/certs/ca-bundle.crt`. Leave empty to use libcurl's default.
+The ones that matter:
+- **`SKINSTRACK_API_KEY`**: your key from [skinstrack.com/api-pricing](https://skinstrack.com/api-pricing). The free plan only gives you 50 calls a month. That's why the server caches the whole price list and refreshes it no more than once every `SKINSTRACK_REFRESH_HOURS`.
+- **`SKINSTRACK_REFRESH_HOURS`**: how often to refresh, in hours (default 24). At 24 you'll use about 30 of your 50 monthly calls.
+- **`SKINSTRACK_CACHE_FILE`**: where the cached price list goes (default `data/skinstrack-items.json`).
+- **`PORT`**: server port (default 8080).
+- **`ALLOWED_ORIGIN`**: the browser origin CORS lets through. It has to match exactly where the frontend is served, like `http://127.0.0.1:5500` locally or your GitHub Pages URL.
+- **`CURL_CA_BUNDLE`**: optional CA bundle for HTTPS. On MSYS2 point it at `C:/msys64/ucrt64/etc/ssl/certs/ca-bundle.crt`. Leave it empty and libcurl uses its default.
 
-Real environment variables override `.env` values.
+Real environment variables win over anything in `.env`.
 
 ### Build & Run
 
-**Windows (MSYS2/MinGW) — Quickstart**
+**Windows (MSYS2/MinGW), the quick way**
 
-Run the development script from PowerShell (not Git Bash):
+Run this from PowerShell. Git Bash won't work here.
 ```powershell
 scripts\dev.bat
 ```
 
-This will:
+It does four things:
 1. Add MSYS2 tools to PATH
 2. Build the project if needed
 3. Start the API on `http://127.0.0.1:8080`
 4. Start the frontend dev server on `http://127.0.0.1:5500`
 
-To stop both services:
+To stop both:
 ```powershell
 scripts\stop.bat
 ```
@@ -146,7 +146,7 @@ cmake --build . -j 8
 .\cs-skin-api.exe
 ```
 
-Then in another terminal:
+Then, in a second terminal:
 ```bash
 python -m http.server 5500
 ```
@@ -159,12 +159,12 @@ cmake --build .
 ./cs-skin-api
 ```
 
-Then in another terminal:
+Then, in a second terminal:
 ```bash
 python -m http.server 5500
 ```
 
-**Note**: The frontend must be served over HTTP (not `file://`). To override the API base URL for non-standard setups, append `?api=http://host:port` to the URL.
+**Note**: the frontend has to be served over HTTP. Opening it with `file://` won't work. If your API lives somewhere unusual, add `?api=http://host:port` to the page URL.
 
 ---
 
@@ -172,7 +172,7 @@ python -m http.server 5500
 
 ### `GET /health`
 
-Returns server status. No authentication required.
+Tells you the server is up. No auth needed.
 
 **Status Codes**: 200 (OK)
 
@@ -184,11 +184,11 @@ Returns server status. No authentication required.
 
 ### `GET /search`
 
-Search for CS2 skins by name with optional price range filtering.
+Search skins by name. You can narrow it to a price range if you want.
 
-**Status Codes**: 
+**Status Codes**:
 - 200 (OK)
-- 400 (Bad Request) — query missing or exceeds 64 characters
+- 400 (Bad Request): query missing or exceeds 64 characters
 - 500 (Internal Server Error)
 
 | Parameter | Type | Required | Description |
@@ -225,11 +225,11 @@ Search for CS2 skins by name with optional price range filtering.
 
 ### `GET /price`
 
-Get price overview for a specific skin.
+Price overview for one skin.
 
-**Status Codes**: 
+**Status Codes**:
 - 200 (OK)
-- 400 (Bad Request) — name parameter missing
+- 400 (Bad Request): name parameter missing
 - 500 (Internal Server Error)
 
 | Parameter | Type | Required | Description |
@@ -255,12 +255,12 @@ Get price overview for a specific skin.
 
 ### `POST /budget/optimize`
 
-Select the optimal combination of skins within a budget using a 0/1 knapsack algorithm.
+Picks the best set of skins that fits your budget, using a 0/1 knapsack.
 
-**Status Codes**: 
+**Status Codes**:
 - 200 (OK)
-- 400 (Bad Request) — invalid JSON, missing fields, or budget outside [0, 10000]
-- 413 (Payload Too Large) — request body exceeds 4 KB
+- 400 (Bad Request): invalid JSON, missing fields, or budget outside [0, 10000]
+- 413 (Payload Too Large): request body exceeds 4 KB
 - 500 (Internal Server Error)
 
 | Field | Type | Required | Description |
@@ -300,20 +300,20 @@ Select the optimal combination of skins within a budget using a 0/1 knapsack alg
 
 ### `POST /loadout/build`
 
-Build a full loadout for T or CT side with per-slot budgets.
+Builds a full T or CT loadout with a budget per slot.
 
-**Status Codes**: 
+**Status Codes**:
 - 200 (OK)
-- 400 (Bad Request) — invalid JSON or invalid side
-- 413 (Payload Too Large) — request body exceeds 4 KB
+- 400 (Bad Request): invalid JSON or invalid side
+- 413 (Payload Too Large): request body exceeds 4 KB
 - 500 (Internal Server Error)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `side` | string | Yes | `"T"` or `"CT"` |
 | `weapons_budget` | float | Yes | Budget split between primary and secondary (0–10000) |
-| `knife_budget` | float | No | Budget for knife slot; 0 = skip (0–10000) |
-| `gloves_budget` | float | No | Budget for gloves slot; 0 = skip (0–10000) |
+| `knife_budget` | float | No | Knife budget, 0 skips the slot (0–10000) |
+| `gloves_budget` | float | No | Gloves budget, 0 skips the slot (0–10000) |
 
 <details>
 <summary>Request / Response</summary>
@@ -349,11 +349,11 @@ Build a full loadout for T or CT side with per-slot budgets.
 
 ### `GET /skinstrack/status`
 
-Check the status and freshness of the cached SkinsTrack price list.
+Shows whether the cached SkinsTrack price list is loaded and how old it is.
 
-**Status Codes**: 
+**Status Codes**:
 - 200 (OK)
-- 503 (Service Unavailable) — SkinsTrack not configured or data missing
+- 503 (Service Unavailable): SkinsTrack not configured or data missing
 
 <details>
 <summary>Response</summary>
@@ -373,13 +373,13 @@ Check the status and freshness of the cached SkinsTrack price list.
 
 ### `GET /skinstrack/price`
 
-Lookup SkinsTrack price data for a skin.
+SkinsTrack price data for one skin.
 
-**Status Codes**: 
+**Status Codes**:
 - 200 (OK)
-- 400 (Bad Request) — name parameter missing
-- 404 (Not Found) — skin not found in SkinsTrack cache
-- 503 (Service Unavailable) — SkinsTrack not configured
+- 400 (Bad Request): name parameter missing
+- 404 (Not Found): skin not found in SkinsTrack cache
+- 503 (Service Unavailable): SkinsTrack not configured
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -402,7 +402,7 @@ Lookup SkinsTrack price data for a skin.
 
 ### `GET /skinstrack/trending`
 
-Most liquid skins from the cached SkinsTrack snapshot (no API calls spent). Ranked by liquidity, then offer count; stickers, charms, and cases are excluded, and only one wear/StatTrak variant per skin is kept.
+The most liquid skins in the cached SkinsTrack snapshot. It doesn't spend any API calls. Results are ranked by liquidity, then by offer count. Stickers, charms and cases are left out, and each skin only shows up once no matter how many wear or StatTrak versions exist.
 
 | Param | Default | Notes |
 |-------|---------|-------|
@@ -466,14 +466,14 @@ cs-skin-api/
 
 ## Testing
 
-Run C++ tests:
+C++ tests:
 ```bash
 ctest --test-dir build --output-on-failure
 ```
 
-Run frontend tests:
+Frontend tests:
 ```bash
 node --test tests/frontend/
 ```
 
-CI runs on every push and PR to `main` and `dev`. See `.github/workflows/ci.yml` for details.
+CI runs both on every push and PR to `main` and `dev`. The details are in `.github/workflows/ci.yml`.
